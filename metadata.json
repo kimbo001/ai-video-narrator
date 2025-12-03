@@ -1,0 +1,5 @@
+{
+  "name": "AI Video Narrator",
+  "description": "Turn text into narrated videos using Gemini for script analysis & speech, and Pixabay for relevant stock footage.",
+  "requestFramePermissions": []
+}
