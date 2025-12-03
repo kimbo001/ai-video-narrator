@@ -119,7 +119,7 @@ const App: React.FC = () => {
 
       for (let i = 0; i < analyzedScenes.length; i++) {
         const scene = analyzedScenes[i];
-        let mediaUrl: string | null = null;
+        let mediaUrl: string | undefined;
         let mediaType = scene.mediaType;
 
         // STOCK LOGIC
@@ -131,11 +131,12 @@ const App: React.FC = () => {
             result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
         }
              
-        mediaUrl = result.url;
+        mediaUrl = result.url || undefined;
+        
         // Final Fallback for visual subject reuse
         if (!mediaUrl && config.visualSubject) {
              const fallbackResult = await getStockMediaForScene(config.visualSubject, 'image', new Set()); 
-             mediaUrl = fallbackResult.url;
+             mediaUrl = fallbackResult.url || undefined;
              mediaType = 'image';
         }
 
@@ -152,7 +153,9 @@ const App: React.FC = () => {
                mediaType = 'image';
            }
         } else {
-            usedMediaUrlsRef.current.add(mediaUrl!);
+            if (mediaUrl) {
+                usedMediaUrlsRef.current.add(mediaUrl);
+            }
         }
 
         scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
@@ -190,7 +193,7 @@ const App: React.FC = () => {
     setScenes(newScenes);
 
     const scene = scenes[sceneIndex];
-    let mediaUrl: string | null = null;
+    let mediaUrl: string | undefined;
     let mediaType = scene.mediaType;
 
     // Stock Regeneration
@@ -199,7 +202,7 @@ const App: React.FC = () => {
         mediaType = 'image';
         result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
     }
-    mediaUrl = result.url;
+    mediaUrl = result.url || undefined;
 
     if (mediaUrl) {
         usedMediaUrlsRef.current.add(mediaUrl);
