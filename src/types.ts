@@ -1,4 +1,3 @@
-
 export enum VideoOrientation {
   Landscape = 'horizontal',
   Portrait = 'vertical'
