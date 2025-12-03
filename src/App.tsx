@@ -119,9 +119,7 @@ const App: React.FC = () => {
 
       for (let i = 0; i < analyzedScenes.length; i++) {
         const scene = analyzedScenes[i];
-        
-        // FIXED: Use undefined instead of null to match Scene interface
-        let mediaUrl: string | undefined; 
+        let mediaUrl: string | undefined;
         let mediaType = scene.mediaType;
 
         // STOCK LOGIC
@@ -133,7 +131,6 @@ const App: React.FC = () => {
             result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
         }
              
-        // FIXED: Convert possible null from API to undefined
         mediaUrl = result.url || undefined;
         
         // Final Fallback for visual subject reuse
@@ -196,8 +193,6 @@ const App: React.FC = () => {
     setScenes(newScenes);
 
     const scene = scenes[sceneIndex];
-    
-    // FIXED: Use undefined instead of null
     let mediaUrl: string | undefined;
     let mediaType = scene.mediaType;
 
