@@ -1,28 +1,39 @@
-
 import React, { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import Generator from './components/Generator';
 import Pricing from './components/Pricing';
 import Legal from './components/Legal';
-import { Video, Shield, CreditCard, Home } from 'lucide-react';
+import { Video } from 'lucide-react';
 
 type Page = 'home' | 'generator' | 'pricing' | 'legal';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
 
+  // Helper to handle type-safe navigation
+  const handleNavigate = (page: string) => {
+      // Basic validation or casting
+      if (['home', 'generator', 'pricing', 'legal'].includes(page)) {
+          setCurrentPage(page as Page);
+      } else {
+          console.warn(`Attempted to navigate to unknown page: ${page}`);
+          setCurrentPage('home');
+      }
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <LandingPage onStart={() => setCurrentPage('generator')} onNavigate={setCurrentPage} />;
+        return <LandingPage onStart={() => setCurrentPage('generator')} onNavigate={handleNavigate} />;
       case 'generator':
         return <Generator onBack={() => setCurrentPage('home')} />;
       case 'pricing':
-        return <Pricing onBack={() => setCurrentPage('home')} onNavigate={setCurrentPage} />;
+        return <Pricing onBack={() => setCurrentPage('home')} onNavigate={handleNavigate} />;
       case 'legal':
         return <Legal onBack={() => setCurrentPage('home')} />;
       default:
-        return <LandingPage onStart={() => setCurrentPage('generator')} onNavigate={setCurrentPage} />;
+        // Fallback to home instead of crashing
+        return <LandingPage onStart={() => setCurrentPage('generator')} onNavigate={handleNavigate} />;
     }
   };
 
@@ -75,7 +86,7 @@ const App: React.FC = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col w-full h-full">
         {renderPage()}
       </main>
 
