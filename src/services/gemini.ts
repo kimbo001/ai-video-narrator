@@ -57,9 +57,10 @@ export const analyzeScript = async (script: string, globalTopic?: string): Promi
 
     return { scenes };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
-    throw new Error("Failed to analyze script.");
+    // Throw the original error so the UI can detect 'leaked key' messages
+    throw error;
   }
 };
 

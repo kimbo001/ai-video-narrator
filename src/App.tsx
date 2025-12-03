@@ -178,9 +178,20 @@ const App: React.FC = () => {
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
 
-    } catch (error) {
-      console.error(error);
-      setStatus({ step: 'error', message: 'Something went wrong. Please check your API keys or try again.' });
+    } catch (error: any) {
+      console.error("Generation Error:", error);
+      
+      let errorMessage = 'Something went wrong. Please check your API keys or try again.';
+      const errString = JSON.stringify(error) + (error.message || '');
+
+      // Handle Leaked Key Error specifically
+      if (errString.includes('leaked') || errString.includes('revoked')) {
+          errorMessage = 'ACCESS DENIED: Your Google API Key was disabled because it was detected in public code. Please generate a NEW key at aistudio.google.com and update your Vercel Environment Variables.';
+      } else if (errString.includes('403') || errString.includes('PERMISSION_DENIED')) {
+          errorMessage = 'Access Denied (403). Your API Key is missing or invalid. Please check Vercel settings.';
+      }
+
+      setStatus({ step: 'error', message: errorMessage });
     }
   };
 
