@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -20,22 +19,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { product_permalink, license_key } = req.body;
+  const { product_id, product_permalink, license_key } = req.body;
 
-  if (!product_permalink || !license_key) {
-    return res.status(400).json({ error: 'Missing parameters: product_permalink or license_key' });
+  if ((!product_id && !product_permalink) || !license_key) {
+    return res.status(400).json({ error: 'Missing parameters: product_id or license_key' });
   }
 
   try {
+    const payload: any = { license_key };
+    if (product_id) payload.product_id = product_id;
+    if (product_permalink) payload.product_permalink = product_permalink;
+
     const response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        product_permalink,
-        license_key,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
@@ -43,7 +43,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (data.success && !data.purchase.refunded && !data.purchase.chargebacked) {
       return res.status(200).json({ success: true, purchase: data.purchase });
     } else {
-      // Return the specific message from Gumroad if available
       const errorMessage = data.message || 'Invalid or refunded license';
       return res.status(400).json({ success: false, error: errorMessage, gumroad_response: data });
     }

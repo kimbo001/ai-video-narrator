@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check, ArrowLeft, Key, Lock, Unlock, Loader2 } from 'lucide-react';
 import { Page } from '../types';
@@ -14,10 +13,8 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
   const [activationMsg, setActivationMsg] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // ---------------------------------------------------------
-  // UPDATED: Matches your URL https://kimbosaurus.gumroad.com/l/AIVideoNarrator
-  // ---------------------------------------------------------
-  const GUMROAD_PRODUCT_PERMALINK = 'AIVideoNarrator'; 
+  // UPDATED: Using Product ID as requested by Gumroad Error
+  const GUMROAD_PRODUCT_ID = 'IKQUftD2-Z1zgm1zoHAWUA=='; 
 
   useEffect(() => {
     const storedLicense = localStorage.getItem('license_key');
@@ -37,13 +34,13 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
       setActivationMsg('');
 
       try {
-          console.log(`Verifying key for product: ${GUMROAD_PRODUCT_PERMALINK}`);
+          console.log(`Verifying key for product ID: ${GUMROAD_PRODUCT_ID}`);
           
           const res = await fetch('/api/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                  product_permalink: GUMROAD_PRODUCT_PERMALINK,
+                  product_id: GUMROAD_PRODUCT_ID,
                   license_key: licenseKey.trim()
               })
           });
