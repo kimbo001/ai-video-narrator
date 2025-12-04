@@ -56,8 +56,8 @@ const App: React.FC = () => {
           
           {/* Logo */}
           <button onClick={() => handleNavigate('home')} className="flex items-center gap-2 group">
-            <img src="/logo.png" alt="AVAI" className="w-8 h-8 object-contain transition-transform group-hover:scale-105" />
-            <span className="font-bold text-white text-lg tracking-tight">AVAI</span>
+            <img src="/logo.png" alt="AI Video Narrator" className="w-8 h-8 object-contain transition-transform group-hover:scale-105" />
+            <span className="font-bold text-white text-lg tracking-tight">AI Video Narrator</span>
           </button>
 
           {/* Desktop Links */}
@@ -103,7 +103,7 @@ const App: React.FC = () => {
       <footer className="border-t border-zinc-800 bg-[#0b0e14] py-12 mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-zinc-500 text-sm">
-            © {new Date().getFullYear()} AVAI. All rights reserved.
+            © {new Date().getFullYear()} AI Video Narrator. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
             <button onClick={() => handleNavigate('legal')} className="text-zinc-500 hover:text-zinc-300 text-sm">Privacy Policy</button>

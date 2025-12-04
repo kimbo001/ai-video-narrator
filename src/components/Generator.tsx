@@ -224,11 +224,11 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           
           finalScenes.push({
               id: 'branding-' + Date.now(),
-              narration: 'Made with AVAI. Create your own video today.',
+              narration: 'Made with AI Video Narrator. Create your own video today.',
               visualSearchTerm: 'logo',
               mediaType: 'image',
-              mediaUrl: `https://placehold.co/${width}x${height}/000000/FFF?text=Made+with+AVAI`,
-              audioData: await generateNarration('Made with AVAI.', config.voiceName),
+              mediaUrl: `https://placehold.co/${width}x${height}/000000/FFF?text=Made+with+AI+Video+Narrator`,
+              audioData: await generateNarration('Made with AI Video Narrator.', config.voiceName),
               duration: 3,
               isBranding: true
           } as Scene);
