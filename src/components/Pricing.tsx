@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Check, ArrowLeft, Key, Lock, Unlock } from 'lucide-react';
+import { Check, ArrowLeft, Key, Lock, Unlock, Loader2 } from 'lucide-react';
 import { Page } from '../types';
 
 interface PricingProps {
@@ -12,6 +12,10 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
   const [licenseKey, setLicenseKey] = useState('');
   const [isPro, setIsPro] = useState(false);
   const [activationMsg, setActivationMsg] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // TODO: Replace this with your actual Gumroad Product Permalink (e.g. 'avai-lifetime')
+  const GUMROAD_PRODUCT_PERMALINK = 'avai-lifetime'; 
 
   useEffect(() => {
     const storedLicense = localStorage.getItem('license_key');
@@ -21,14 +25,40 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
     }
   }, []);
 
-  const handleActivate = () => {
-      // In a real app, verify this key against Gumroad API
-      if (licenseKey.trim().length > 5) {
-          localStorage.setItem('license_key', licenseKey);
-          setIsPro(true);
-          setActivationMsg('License activated successfully! You now have unlimited access.');
-      } else {
-          setActivationMsg('Invalid license key.');
+  const handleActivate = async () => {
+      if (licenseKey.trim().length < 5) {
+          setActivationMsg('Please enter a valid key.');
+          return;
+      }
+
+      setIsVerifying(true);
+      setActivationMsg('');
+
+      try {
+          const res = await fetch('/api/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  product_permalink: GUMROAD_PRODUCT_PERMALINK,
+                  license_key: licenseKey.trim()
+              })
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+              localStorage.setItem('license_key', licenseKey.trim());
+              setIsPro(true);
+              setActivationMsg('License activated successfully! You now have unlimited access.');
+          } else {
+              setActivationMsg(data.error || 'Invalid license key.');
+              setIsPro(false);
+          }
+      } catch (error) {
+          console.error("Verification error:", error);
+          setActivationMsg('Connection error. Please try again.');
+      } finally {
+          setIsVerifying(false);
       }
   };
 
@@ -77,13 +107,14 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
                   />
                   <button 
                     onClick={handleActivate}
-                    className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                    disabled={isVerifying}
+                    className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Activate
+                    {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activate'}
                   </button>
               </div>
           )}
-          {activationMsg && <p className={`text-xs mt-3 ${activationMsg.includes('Invalid') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
+          {activationMsg && <p className={`text-xs mt-3 ${activationMsg.includes('Invalid') || activationMsg.includes('error') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
