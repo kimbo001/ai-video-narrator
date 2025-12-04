@@ -4,18 +4,42 @@
     <meta charset="UTF-8" />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Video Narrator</title>
+    <title>AVAI - AI Video Narrator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/logo.png" />
     <style>
       body {
         font-family: 'Inter', sans-serif;
         background-color: #09090b;
         color: #f4f4f5;
       }
+      .ken-burns {
+        animation: kenBurns 20s ease-out infinite alternate;
+      }
+      @keyframes kenBurns {
+        0% { transform: scale(1) translate(0, 0); }
+        100% { transform: scale(1.15) translate(-1%, -1%); }
+      }
     </style>
-  </head>
+  <script type="importmap">
+{
+  "imports": {
+    "@vercel/node": "https://aistudiocdn.com/@vercel/node@^5.5.14",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
