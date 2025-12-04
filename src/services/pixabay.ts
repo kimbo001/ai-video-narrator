@@ -139,27 +139,23 @@ export const fetchPixabayAudio = async (apiKey: string, mood: string): Promise<s
             per_page: '30'
         });
         
-        // Pixabay Audio endpoint is technically different, often documented as separate or under /audio/
-        // Standard endpoint: https://pixabay.com/api/videos/ handles videos, but audio is usually undocumented publicly in the same wrapper,
-        // BUT Pixabay *does* have an audio API. 
-        // NOTE: The main API key often works for https://pixabay.com/api/?video_type=... but music is tricky.
-        // Let's try the common endpoint for music or fallback to a hardcoded generic if API fails.
-        // Actually, Pixabay Audio API usually requires a specific request. 
-        // If this fails, we will assume no music to prevent breaking.
-        
-        // Correct endpoint for music if available to your key:
+        // This often returns 403 if the Key doesn't have Audio scope enabled.
         const response = await fetch(`https://pixabay.com/api/audio/?${params.toString()}`);
+        if(response.status === 403) {
+            console.warn("Pixabay Audio API restricted. Ignoring.");
+            return null; // Silently fail so we don't spam console
+        }
         if(!response.ok) return null;
         
         const data = await response.json();
         if(data.hits && data.hits.length > 0) {
             // Pick random track from top 30
             const random = data.hits[Math.floor(Math.random() * data.hits.length)];
-            return random.audio || null; // 'audio' field might vary, sometimes 'url'
+            return random.audio || null; 
         }
         return null;
     } catch(e) {
-        console.error("Pixabay Audio Error:", e);
+        // console.error("Pixabay Audio Error:", e); // Suppress log
         return null;
     }
 }

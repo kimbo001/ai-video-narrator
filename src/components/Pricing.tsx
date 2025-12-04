@@ -22,8 +22,7 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
   }, []);
 
   const handleActivate = () => {
-      // In a real app, verify this key against Gumroad API (https://api.gumroad.com/v2/licenses/verify)
-      // For this demo, we'll accept any key that looks like a UUID or is non-empty
+      // In a real app, verify this key against Gumroad API
       if (licenseKey.trim().length > 5) {
           localStorage.setItem('license_key', licenseKey);
           setIsPro(true);

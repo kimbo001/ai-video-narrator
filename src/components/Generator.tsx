@@ -6,7 +6,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Monitor, Smartphone, Mic, Focus, Ban, Upload, ArrowLeft, Music } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Monitor, Smartphone, Mic, Focus, Ban, Upload, ArrowLeft, Music, FileAudio } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
@@ -33,6 +33,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [status, setStatus] = useState<GenerationStatus>({ step: 'idle' });
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
+  const [musicFile, setMusicFile] = useState<File | null>(null);
   
   // Usage Tracking
   const [generationsToday, setGenerationsToday] = useState(0);
@@ -139,16 +140,21 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       
       // FETCH MUSIC if enabled
       if (config.includeMusic) {
-          setStatus({ step: 'fetching_media', message: 'Searching for background music...' });
-          // Use visual subject as mood or default to cinematic
-          const mood = config.visualSubject || 'cinematic ambient';
-          const musicUrl = await fetchPixabayAudio(config.pixabayApiKey, mood);
-          if (musicUrl) {
-              setBackgroundMusicUrl(musicUrl);
+          if (musicFile) {
+              // Use user uploaded file
+              const objectUrl = URL.createObjectURL(musicFile);
+              setBackgroundMusicUrl(objectUrl);
           } else {
-              // Fallback
-              const fallbackMusic = await fetchPixabayAudio(config.pixabayApiKey, 'background music');
-              if (fallbackMusic) setBackgroundMusicUrl(fallbackMusic);
+              // Try API
+              setStatus({ step: 'fetching_media', message: 'Searching for background music...' });
+              const mood = config.visualSubject || 'cinematic ambient';
+              const musicUrl = await fetchPixabayAudio(config.pixabayApiKey, mood);
+              if (musicUrl) {
+                  setBackgroundMusicUrl(musicUrl);
+              } else {
+                  const fallbackMusic = await fetchPixabayAudio(config.pixabayApiKey, 'background music');
+                  if (fallbackMusic) setBackgroundMusicUrl(fallbackMusic);
+              }
           }
       }
 
@@ -321,18 +327,33 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
             <SettingsPanel config={config} onConfigChange={updateConfig} />
             
-            {/* Music Toggle */}
-            <div className="bg-[#11141b] border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                        <Music className="w-4 h-4 text-indigo-400" />
+            {/* Music Toggle & Upload */}
+            <div className="bg-[#11141b] border border-zinc-800 rounded-xl p-4 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                            <Music className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <span className="text-sm font-medium text-zinc-300">Background Music</span>
                     </div>
-                    <span className="text-sm font-medium text-zinc-300">Background Music</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={config.includeMusic} onChange={(e) => setConfig(prev => ({...prev, includeMusic: e.target.checked}))} />
+                        <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                    </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={config.includeMusic} onChange={(e) => setConfig(prev => ({...prev, includeMusic: e.target.checked}))} />
-                    <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-                </label>
+                
+                {config.includeMusic && (
+                    <div className="flex items-center gap-3 pl-11">
+                        <label className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-zinc-400 hover:text-white hover:border-zinc-500 cursor-pointer transition-all">
+                            <FileAudio className="w-3 h-3" />
+                            <span>{musicFile ? musicFile.name.substring(0, 15) + '...' : 'Upload MP3'}</span>
+                            <input type="file" accept="audio/mp3,audio/wav" className="hidden" onChange={(e) => {
+                                if (e.target.files?.[0]) setMusicFile(e.target.files[0]);
+                            }} />
+                        </label>
+                        {musicFile && <button onClick={() => setMusicFile(null)} className="text-xs text-red-400 hover:underline">Remove</button>}
+                    </div>
+                )}
             </div>
             
              <button 
