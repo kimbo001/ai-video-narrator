@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -308,7 +307,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const isGenerating = status.step !== 'idle' && status.step !== 'ready' && status.step !== 'error';
 
   return (
-    <div className="flex-1 max-w-[1600px] mx-auto p-4 lg:p-8 w-full h-full flex flex-col">
+    <div className="flex-1 max-w-[1920px] mx-auto p-4 lg:p-6 w-full h-full flex flex-col">
         <div className="mb-4 flex items-center justify-between">
             <button 
                 onClick={onBack}
@@ -325,30 +324,64 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             )}
         </div>
 
+        {/* 3-COLUMN GRID LAYOUT */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full flex-1 min-h-0">
           
-          {/* Left Column - Fixed Layout with Sticky Footer */}
-          <div className="lg:col-span-4 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden relative">
-            
-            {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-24">
-                <div className="mb-6">
-                   <h2 className="text-white font-semibold text-lg mb-4">Your Story</h2>
-                   <textarea
-                      value={script}
-                      onChange={(e) => setScript(e.target.value)}
-                      className="w-full min-h-[150px] bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-2"
-                      placeholder="Enter your story script here..."
-                   />
-                   <div className="flex items-center justify-end">
-                      <span className="text-xs text-zinc-500 font-mono">{script.length} chars</span>
-                   </div>
-                </div>
+          {/* COLUMN 1: Story & Generate (Span 3) */}
+          <div className="lg:col-span-3 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
+             <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
+                 <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center text-cyan-400">1</div>
+                 <h2 className="text-white font-semibold text-sm">Story Script</h2>
+             </div>
+             
+             <div className="flex-1 p-4 flex flex-col min-h-0">
+                 <textarea
+                    value={script}
+                    onChange={(e) => setScript(e.target.value)}
+                    className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-2 custom-scrollbar"
+                    placeholder="Enter your story script here..."
+                 />
+                 <div className="flex items-center justify-end mb-2">
+                    <span className="text-xs text-zinc-500 font-mono">{script.length} chars</span>
+                 </div>
+             </div>
+             
+             {/* Generate Button Sticky Footer */}
+             <div className="p-4 bg-[#11141b] border-t border-zinc-800">
+                 <button 
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !script.trim()}
+                    className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-3.5 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-3"
+                 >
+                    {isGenerating ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            {status.step === 'analyzing' && 'Analyzing...'}
+                            {status.step === 'fetching_media' && 'Fetching...'}
+                            {status.step === 'generating_audio' && 'Recording...'}
+                        </>
+                    ) : (
+                        <>
+                            <Wand2 className="w-5 h-5" />
+                            Generate Video
+                        </>
+                    )}
+                 </button>
+             </div>
+          </div>
 
+          {/* COLUMN 2: Configuration (Span 3) */}
+          <div className="lg:col-span-3 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
+             <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
+                 <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400">2</div>
+                 <h2 className="text-white font-semibold text-sm">Configuration</h2>
+             </div>
+
+             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4">
                 <SettingsPanel config={config} onConfigChange={updateConfig} />
                 
                 {/* Music Control Section */}
-                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-4 mb-4">
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
@@ -363,7 +396,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                     </div>
                     
                     {config.includeMusic && (
-                        <div className="space-y-4 pt-2 border-t border-zinc-800/50">
+                        <div className="space-y-4 pt-4 border-t border-zinc-800/50">
                             {/* Upload */}
                             <div className="flex items-center gap-3">
                                 <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg text-xs text-zinc-400 hover:text-white hover:border-zinc-500 cursor-pointer transition-all">
@@ -392,47 +425,26 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                         </div>
                     )}
                 </div>
-            </div>
-
-            {/* Sticky Footer */}
-            <div className="absolute bottom-0 left-0 right-0 p-5 bg-[#11141b]/95 backdrop-blur-md border-t border-zinc-800 z-10">
-                 <button 
-                    onClick={handleGenerate}
-                    disabled={isGenerating || !script.trim()}
-                    className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-3.5 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-3"
-                 >
-                    {isGenerating ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            {status.step === 'analyzing' && 'Analyzing...'}
-                            {status.step === 'fetching_media' && 'Fetching Media...'}
-                            {status.step === 'generating_audio' && 'Recording...'}
-                        </>
-                    ) : (
-                        <>
-                            <Wand2 className="w-5 h-5" />
-                            Generate Video
-                        </>
-                    )}
-                 </button>
-            </div>
-
+             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="lg:col-span-8 flex flex-col gap-6 h-full overflow-hidden">
-             
-             <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-6 h-full flex flex-col shadow-lg overflow-hidden">
-                <div className="flex items-center justify-between mb-4 shrink-0">
-                    <h2 className="text-white font-semibold text-lg">Preview</h2>
-                    <div className="flex items-center gap-2">
-                         {scenes.length > 0 && (
-                             <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded border border-green-400/20">Ready to Export</span>
-                         )}
-                    </div>
-                </div>
+          {/* COLUMN 3: Preview & Storyboard (Span 6) */}
+          <div className="lg:col-span-6 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
+             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+                 <div className="flex items-center gap-2">
+                     <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400">3</div>
+                     <h2 className="text-white font-semibold text-sm">Preview & Export</h2>
+                 </div>
+                 <div className="flex items-center gap-2">
+                     {scenes.length > 0 && (
+                         <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 animate-pulse">Ready</span>
+                     )}
+                 </div>
+             </div>
 
-                <div className="h-[480px] shrink-0 bg-[#0b0e14] rounded-xl border border-zinc-800 overflow-hidden relative flex flex-col items-center justify-center mb-6">
+             <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Video Player */}
+                <div className="h-[400px] shrink-0 bg-[#0b0e14] border-b border-zinc-800 overflow-hidden relative flex flex-col items-center justify-center">
                     <VideoPlayer 
                         scenes={scenes} 
                         orientation={config.orientation} 
@@ -441,8 +453,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                     />
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
-                    <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#11141b] z-10 pb-2">
+                {/* Storyboard List */}
+                <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar p-4 bg-[#0b0e14]/50">
+                    <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-medium text-zinc-400">Storyboard Scenes</h3>
                         <span className="text-xs text-zinc-600">{scenes.length} Scenes</span>
                     </div>
@@ -456,7 +469,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-2">
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pb-2">
                             {scenes.map((scene, idx) => (
                                 <div key={scene.id} className="relative group">
                                     <div className={`w-full ${config.orientation === VideoOrientation.Landscape ? 'aspect-video' : 'aspect-[9/16]'} bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800 relative`}>
