@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Play, Sparkles, Image as ImageIcon, Mic2, ArrowRight } from 'lucide-react';
+import { Play, Sparkles, Image as ImageIcon, Mic2, Video } from 'lucide-react';
 import { Page } from '../types';
 
 interface LandingPageProps {
@@ -12,13 +12,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
   return (
     <div className="flex flex-col min-h-full">
       {/* Hero Section */}
-      <section className="relative pt-20 pb-32 overflow-hidden">
+      <section className="relative pt-20 pb-32 overflow-hidden flex-1 flex flex-col justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-900/20 via-[#0b0e14] to-[#0b0e14]"></div>
         
         <div className="relative max-w-7xl mx-auto px-6 text-center z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-medium mb-8">
-            <Sparkles className="w-3 h-3" />
-            <span>Now with AI Voice Cloning</span>
+          
+          {/* Logo / Icon Replacement */}
+          <div className="flex justify-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-cyan-500/20">
+              <Video className="w-8 h-8 text-white" />
+            </div>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">

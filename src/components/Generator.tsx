@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -307,8 +308,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const isGenerating = status.step !== 'idle' && status.step !== 'ready' && status.step !== 'error';
 
   return (
-    <div className="flex-1 max-w-[1920px] mx-auto p-4 lg:p-6 w-full h-full flex flex-col">
-        <div className="mb-4 flex items-center justify-between">
+    <div className="h-[calc(100vh-80px)] flex-1 w-full flex flex-col p-4 lg:p-6 overflow-hidden">
+        <div className="mb-4 flex items-center justify-between shrink-0">
             <button 
                 onClick={onBack}
                 className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium"
@@ -325,20 +326,20 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         </div>
 
         {/* 3-COLUMN GRID LAYOUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-0">
           
           {/* COLUMN 1: Story & Generate (Span 3) */}
-          <div className="lg:col-span-3 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
-             <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
+          <div className="lg:col-span-3 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden relative">
+             <div className="p-4 border-b border-zinc-800 flex items-center gap-2 shrink-0">
                  <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center text-cyan-400">1</div>
                  <h2 className="text-white font-semibold text-sm">Story Script</h2>
              </div>
              
-             <div className="flex-1 p-4 flex flex-col min-h-0">
+             <div className="flex-1 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pb-24">
                  <textarea
                     value={script}
                     onChange={(e) => setScript(e.target.value)}
-                    className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-2 custom-scrollbar"
+                    className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-2 min-h-[200px]"
                     placeholder="Enter your story script here..."
                  />
                  <div className="flex items-center justify-end mb-2">
@@ -347,7 +348,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
              </div>
              
              {/* Generate Button Sticky Footer */}
-             <div className="p-4 bg-[#11141b] border-t border-zinc-800">
+             <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#11141b]/95 backdrop-blur-md border-t border-zinc-800 z-10">
                  <button 
                     onClick={handleGenerate}
                     disabled={isGenerating || !script.trim()}
@@ -372,7 +373,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
           {/* COLUMN 2: Configuration (Span 3) */}
           <div className="lg:col-span-3 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
-             <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
+             <div className="p-4 border-b border-zinc-800 flex items-center gap-2 shrink-0">
                  <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400">2</div>
                  <h2 className="text-white font-semibold text-sm">Configuration</h2>
              </div>
@@ -430,7 +431,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
           {/* COLUMN 3: Preview & Storyboard (Span 6) */}
           <div className="lg:col-span-6 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
-             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+             <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
                  <div className="flex items-center gap-2">
                      <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400">3</div>
                      <h2 className="text-white font-semibold text-sm">Preview & Export</h2>
