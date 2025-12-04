@@ -224,11 +224,11 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           
           finalScenes.push({
               id: 'branding-' + Date.now(),
-              narration: 'Made with AI Video Narrator. Create your own video today.',
+              narration: 'Made with AVAI. Create your own video today.',
               visualSearchTerm: 'logo',
               mediaType: 'image',
-              mediaUrl: `https://placehold.co/${width}x${height}/000000/FFF?text=Made+with+AI+Video+Narrator`,
-              audioData: await generateNarration('Made with AI Video Narrator.', config.voiceName),
+              mediaUrl: `https://placehold.co/${width}x${height}/000000/FFF?text=Made+with+AVAI`,
+              audioData: await generateNarration('Made with AVAI.', config.voiceName),
               duration: 3,
               isBranding: true
           } as Scene);
@@ -325,16 +325,17 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             )}
         </div>
 
-        {/* 3-COLUMN GRID LAYOUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-0">
+        {/* FIXED FLEX LAYOUT - Prevents resizing issues */}
+        <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0">
           
-          {/* COLUMN 1: Story & Generate (Span 3) */}
-          <div className="lg:col-span-3 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden relative">
+          {/* COLUMN 1: Story & Generate (FIXED WIDTH) */}
+          <div className="w-full lg:w-[360px] shrink-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden relative">
              <div className="p-4 border-b border-zinc-800 flex items-center gap-2 shrink-0">
                  <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center text-cyan-400">1</div>
                  <h2 className="text-white font-semibold text-sm">Story Script</h2>
              </div>
              
+             {/* Content Area - Extra padding at bottom for absolute button */}
              <div className="flex-1 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pb-24">
                  <textarea
                     value={script}
@@ -347,7 +348,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                  </div>
              </div>
              
-             {/* Generate Button Sticky Footer */}
+             {/* Generate Button - Absolutely Positioned at Bottom */}
              <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#11141b]/95 backdrop-blur-md border-t border-zinc-800 z-10">
                  <button 
                     onClick={handleGenerate}
@@ -371,8 +372,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
              </div>
           </div>
 
-          {/* COLUMN 2: Configuration (Span 3) */}
-          <div className="lg:col-span-3 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
+          {/* COLUMN 2: Configuration (FIXED WIDTH) */}
+          <div className="w-full lg:w-[340px] shrink-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
              <div className="p-4 border-b border-zinc-800 flex items-center gap-2 shrink-0">
                  <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400">2</div>
                  <h2 className="text-white font-semibold text-sm">Configuration</h2>
@@ -429,8 +430,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
              </div>
           </div>
 
-          {/* COLUMN 3: Preview & Storyboard (Span 6) */}
-          <div className="lg:col-span-6 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
+          {/* COLUMN 3: Preview & Storyboard (FLUID WIDTH) */}
+          <div className="flex-1 min-w-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
              <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
                  <div className="flex items-center gap-2">
                      <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400">3</div>

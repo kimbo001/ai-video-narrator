@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Play, Sparkles, Image as ImageIcon, Mic2, Video } from 'lucide-react';
+import { Play, Sparkles, Image as ImageIcon, Mic2 } from 'lucide-react';
 import { Page } from '../types';
 
 interface LandingPageProps {
@@ -19,9 +19,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
           
           {/* Logo / Icon Replacement */}
           <div className="flex justify-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-cyan-500/20">
-              <Video className="w-8 h-8 text-white" />
-            </div>
+             <img src="/logo.png" alt="AVAI" className="w-24 h-24 object-contain drop-shadow-[0_0_20px_rgba(6,182,212,0.3)]" />
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
