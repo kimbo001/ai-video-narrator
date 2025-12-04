@@ -15,7 +15,7 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
   const [isVerifying, setIsVerifying] = useState(false);
 
   // TODO: Replace this with your actual Gumroad Product Permalink (e.g. 'avai-lifetime')
-  const GUMROAD_PRODUCT_PERMALINK = 'avai-lifetime'; 
+  const GUMROAD_PRODUCT_PERMALINK = AIVideoNarrator; 
 
   useEffect(() => {
     const storedLicense = localStorage.getItem('license_key');
