@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { Play, Sparkles, Image as ImageIcon, Mic2, ArrowRight } from 'lucide-react';
+import { Page } from '../types';
 
 interface LandingPageProps {
   onStart: () => void;
-  onNavigate: (page: string) => void;
+  onNavigate: (page: Page) => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {

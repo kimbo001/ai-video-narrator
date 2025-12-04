@@ -1,13 +1,45 @@
 
-import React from 'react';
-import { Check, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, ArrowLeft, Key, Lock, Unlock } from 'lucide-react';
+import { Page } from '../types';
 
 interface PricingProps {
   onBack: () => void;
-  onNavigate: (page: string) => void;
+  onNavigate: (page: Page) => void;
 }
 
 const Pricing: React.FC<PricingProps> = ({ onBack }) => {
+  const [licenseKey, setLicenseKey] = useState('');
+  const [isPro, setIsPro] = useState(false);
+  const [activationMsg, setActivationMsg] = useState('');
+
+  useEffect(() => {
+    const storedLicense = localStorage.getItem('license_key');
+    if (storedLicense) {
+        setIsPro(true);
+        setLicenseKey(storedLicense);
+    }
+  }, []);
+
+  const handleActivate = () => {
+      // In a real app, verify this key against Gumroad API (https://api.gumroad.com/v2/licenses/verify)
+      // For this demo, we'll accept any key that looks like a UUID or is non-empty
+      if (licenseKey.trim().length > 5) {
+          localStorage.setItem('license_key', licenseKey);
+          setIsPro(true);
+          setActivationMsg('License activated successfully! You now have unlimited access.');
+      } else {
+          setActivationMsg('Invalid license key.');
+      }
+  };
+
+  const handleDeactivate = () => {
+      localStorage.removeItem('license_key');
+      setIsPro(false);
+      setLicenseKey('');
+      setActivationMsg('License removed.');
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <button 
@@ -18,18 +50,50 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
         Back
       </button>
 
-      <div className="text-center mb-16">
+      <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-white mb-4">Simple, Transparent Pricing</h1>
-        <p className="text-zinc-400 text-lg">Start for free, upgrade when you go viral.</p>
+        <p className="text-zinc-400 text-lg">Start for free, unlock unlimited power forever.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Activation Section */}
+      <div className="max-w-xl mx-auto mb-16 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+              {isPro ? <Unlock className="text-green-500 w-5 h-5" /> : <Key className="text-cyan-500 w-5 h-5" />}
+              <h3 className="text-white font-semibold">{isPro ? 'Lifetime License Active' : 'Activate Lifetime License'}</h3>
+          </div>
+          
+          {isPro ? (
+              <div>
+                  <p className="text-green-400 text-sm mb-4">You have unlimited access.</p>
+                  <button onClick={handleDeactivate} className="text-xs text-zinc-500 hover:text-zinc-300 underline">Deactivate Device</button>
+              </div>
+          ) : (
+              <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={licenseKey}
+                    onChange={(e) => setLicenseKey(e.target.value)}
+                    placeholder="Enter Gumroad License Key"
+                    className="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm focus:border-cyan-500 outline-none"
+                  />
+                  <button 
+                    onClick={handleActivate}
+                    className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Activate
+                  </button>
+              </div>
+          )}
+          {activationMsg && <p className={`text-xs mt-3 ${activationMsg.includes('Invalid') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         
         {/* Free Plan */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-8 flex flex-col">
+        <div className={`bg-[#11141b] border ${isPro ? 'border-zinc-800 opacity-50' : 'border-zinc-700'} rounded-2xl p-8 flex flex-col`}>
           <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white">Starter</h3>
-            <p className="text-zinc-400 text-sm mt-2">For testing the waters.</p>
+            <h3 className="text-xl font-semibold text-white">Free Starter</h3>
+            <p className="text-zinc-400 text-sm mt-2">Perfect for trying it out.</p>
           </div>
           <div className="mb-8">
             <span className="text-4xl font-bold text-white">$0</span>
@@ -37,84 +101,66 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
           </div>
           <ul className="flex-1 space-y-4 mb-8">
             <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>3 Videos per day</span>
+              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
+              <span>5 Generations per day</span>
             </li>
             <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Standard Rendering Speed</span>
+              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
+              <span>720p Export Quality</span>
             </li>
             <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>720p Export</span>
+              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
+              <span>Standard AI Voices</span>
             </li>
           </ul>
-          <button className="w-full py-3 rounded-xl border border-zinc-700 text-white font-semibold hover:bg-zinc-800 transition-colors">
-            Current Plan
+          <button disabled={true} className="w-full py-3 rounded-xl border border-zinc-700 text-zinc-400 font-semibold cursor-default">
+            {isPro ? 'Upgraded' : 'Current Plan'}
           </button>
         </div>
 
-        {/* Pro Plan */}
-        <div className="bg-[#11141b] border border-cyan-500/30 rounded-2xl p-8 flex flex-col relative overflow-hidden">
-          <div className="absolute top-0 right-0 bg-cyan-500 text-black text-xs font-bold px-3 py-1 rounded-bl-xl">POPULAR</div>
+        {/* Lifetime Plan */}
+        <div className={`bg-[#11141b] border ${isPro ? 'border-green-500/50 bg-green-900/10' : 'border-cyan-500/50'} rounded-2xl p-8 flex flex-col relative overflow-hidden`}>
+          {!isPro && <div className="absolute top-0 right-0 bg-cyan-500 text-black text-xs font-bold px-3 py-1 rounded-bl-xl">BEST VALUE</div>}
           <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white">Pro Creator</h3>
-            <p className="text-zinc-400 text-sm mt-2">For serious content creators.</p>
+            <h3 className="text-xl font-semibold text-white">Lifetime Access</h3>
+            <p className="text-zinc-400 text-sm mt-2">One payment, unlimited forever.</p>
           </div>
           <div className="mb-8">
-            <span className="text-4xl font-bold text-white">$12</span>
-            <span className="text-zinc-500">/month</span>
+            <span className="text-4xl font-bold text-white">$99</span>
+            <span className="text-zinc-500">/once off</span>
           </div>
           <ul className="flex-1 space-y-4 mb-8">
             <li className="flex items-center gap-3 text-zinc-300">
               <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Unlimited Videos</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Priority Rendering</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>1080p HD Export</span>
+              <span className="font-bold text-white">Unlimited Generations</span>
             </li>
             <li className="flex items-center gap-3 text-zinc-300">
               <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
               <span>Commercial Rights</span>
             </li>
-          </ul>
-          <button className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20">
-            Subscribe Now
-          </button>
-        </div>
-
-        {/* Lifetime Plan */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-8 flex flex-col">
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white">Lifetime</h3>
-            <p className="text-zinc-400 text-sm mt-2">Pay once, own it forever.</p>
-          </div>
-          <div className="mb-8">
-            <span className="text-4xl font-bold text-white">$99</span>
-            <span className="text-zinc-500">/once</span>
-          </div>
-          <ul className="flex-1 space-y-4 mb-8">
             <li className="flex items-center gap-3 text-zinc-300">
               <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>All Pro Features</span>
+              <span>Priority 1080p Processing</span>
             </li>
             <li className="flex items-center gap-3 text-zinc-300">
               <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Lifetime Updates</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Priority Support</span>
+              <span>Support Future Updates</span>
             </li>
           </ul>
-          <button className="w-full py-3 rounded-xl border border-zinc-700 text-white font-semibold hover:bg-zinc-800 transition-colors">
-            Buy Lifetime
-          </button>
+          
+          {isPro ? (
+              <button disabled className="w-full py-3 rounded-xl bg-green-600 text-white font-bold cursor-default">
+                  Plan Active
+              </button>
+          ) : (
+              <button 
+                onClick={() => window.open('https://gumroad.com', '_blank')} 
+                className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
+              >
+                Buy on Gumroad
+              </button>
+          )}
+          {!isPro && <p className="text-center text-xs text-zinc-500 mt-3">Receive license key instantly via email</p>}
         </div>
 
       </div>

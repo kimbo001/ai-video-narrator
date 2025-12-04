@@ -7,9 +7,10 @@ import { pcm16ToWav } from '../utils/audio';
 interface VideoPlayerProps {
   scenes: Scene[];
   orientation: VideoOrientation;
+  backgroundMusicUrl?: string | null;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgroundMusicUrl }) => {
   // --- STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
@@ -24,31 +25,32 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   
-  // Narration Source
+  // Audio Sources
   const narrationSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const bgMusicElementRef = useRef<HTMLAudioElement | null>(null);
+  const bgMusicSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const bgMusicGainRef = useRef<GainNode | null>(null);
   
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number>(0);
   
-  // Mutable state refs for the Loop
+  // Mutable state refs
   const stateRef = useRef({
     currentSceneIndex: 0,
     sceneStartTimestamp: 0,
     isPlaying: false,
     isExporting: false,
-    scenesLength: 0,
     orientation: orientation,
     showCaptions: true
   });
 
-  // Keep stateRef synced
+  // Sync state refs
   useEffect(() => {
     stateRef.current.currentSceneIndex = currentSceneIndex;
     stateRef.current.isPlaying = isPlaying;
     stateRef.current.isExporting = isExporting;
-    stateRef.current.scenesLength = scenes.length;
     stateRef.current.orientation = orientation;
     stateRef.current.showCaptions = showCaptions;
-  }, [currentSceneIndex, isPlaying, isExporting, scenes.length, orientation, showCaptions]);
+  }, [currentSceneIndex, isPlaying, isExporting, orientation, showCaptions]);
 
   // Assets
   const assetsRef = useRef<{
@@ -61,16 +63,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
   const width = isLandscape ? 1280 : 720;
   const height = isLandscape ? 720 : 1280;
 
-  // --- INITIALIZATION & LOADING ---
+  // --- INITIALIZATION ---
   useEffect(() => {
-    // Cleanup
+    // Stop loops/playback
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
     if (narrationSourceRef.current) { try { narrationSourceRef.current.stop(); } catch(e){} }
+    if (bgMusicElementRef.current) { bgMusicElementRef.current.pause(); }
     
     // Clear video container
-    if (videoContainerRef.current) {
-        videoContainerRef.current.innerHTML = '';
-    }
+    if (videoContainerRef.current) videoContainerRef.current.innerHTML = '';
 
     // Reset state
     setIsPlaying(false);
@@ -92,14 +93,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
       setLoadingProgress(0);
       setError(null);
       
-      if (audioContextRef.current) {
-        try { await audioContextRef.current.close(); } catch(e) {}
-        audioContextRef.current = null;
-      }
-
       try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        audioContextRef.current = new AudioContextClass();
+        if (!audioContextRef.current) {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            audioContextRef.current = new AudioContextClass();
+        } else if (audioContextRef.current.state === 'closed') {
+             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+             audioContextRef.current = new AudioContextClass();
+        }
         
         // --- LOAD SCENE ASSETS ---
         const images: Record<string, HTMLImageElement> = {};
@@ -113,15 +114,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
           // 1. Load Audio
           if (scene.audioData) {
             try {
-              // Gemini: Raw PCM 16-bit to WAV
               const wavBlob = pcm16ToWav(scene.audioData);
               const arrayBuffer = await wavBlob.arrayBuffer();
-
-              if (audioContextRef.current) {
-                const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-                audioBuffers[scene.id] = audioBuffer;
-                scene.duration = audioBuffer.duration;
-              }
+              const audioBuffer = await audioContextRef.current!.decodeAudioData(arrayBuffer);
+              audioBuffers[scene.id] = audioBuffer;
+              scene.duration = audioBuffer.duration;
             } catch (e) {
               console.warn(`Audio decode failed for scene ${scene.id}`, e);
               scene.duration = Math.max(3, scene.narration.length / 15);
@@ -142,19 +139,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
                 vid.loop = true;
                 vid.playsInline = true;
                 vid.preload = 'auto'; 
-                
-                // Mount to DOM hidden to prevent browser throttling
                 vid.style.display = 'none';
-                if (videoContainerRef.current) {
-                    videoContainerRef.current.appendChild(vid);
-                }
+                if (videoContainerRef.current) videoContainerRef.current.appendChild(vid);
 
                 await new Promise((resolve) => {
                     vid.onloadeddata = resolve;
-                    vid.onerror = () => {
-                        console.warn(`Video load failed: ${scene.mediaUrl}`);
-                        resolve(null); 
-                    };
+                    vid.onerror = () => resolve(null);
                 });
                 videos[scene.id] = vid;
             } else {
@@ -163,16 +153,55 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
                 img.src = scene.mediaUrl;
                 await new Promise((resolve) => {
                     img.onload = resolve;
-                    img.onerror = () => {
-                        console.warn(`Image load failed: ${scene.mediaUrl}`);
-                        resolve(null);
-                    };
+                    img.onerror = () => resolve(null);
                 });
                 images[scene.id] = img;
             }
           }
           loadedCount++;
           setLoadingProgress(Math.round((loadedCount / total) * 100));
+        }
+
+        // --- LOAD BACKGROUND MUSIC ---
+        if (backgroundMusicUrl) {
+            const audio = new Audio();
+            audio.crossOrigin = 'anonymous';
+            audio.src = backgroundMusicUrl;
+            audio.loop = true;
+            bgMusicElementRef.current = audio;
+            
+            // Wait for metadata so we know it's playable
+            await new Promise((resolve) => {
+                audio.onloadedmetadata = resolve;
+                audio.onerror = () => {
+                    console.warn("Failed to load background music");
+                    resolve(null);
+                };
+            });
+
+            // Connect to AudioContext for volume control and export
+            if (audioContextRef.current) {
+                // Check if we already created a source for this element? 
+                // Creating MediaElementSource twice on same element throws error.
+                // We will create it once when we start playing if needed, 
+                // or just use a simple gain node logic.
+                // NOTE: To avoid "MediaElementAudioSourceNode" errors on re-renders,
+                // we reconstruct the Audio element every time URL changes (which we did above).
+                try {
+                    const source = audioContextRef.current.createMediaElementSource(audio);
+                    const gain = audioContextRef.current.createGain();
+                    gain.gain.value = 0.15; // Low background volume
+                    source.connect(gain);
+                    gain.connect(audioContextRef.current.destination);
+                    
+                    bgMusicSourceRef.current = source;
+                    bgMusicGainRef.current = gain;
+                } catch(e) {
+                    console.warn("Audio routing error:", e);
+                }
+            }
+        } else {
+            bgMusicElementRef.current = null;
         }
 
         assetsRef.current = { images, videos, audioBuffers };
@@ -188,18 +217,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
     return () => {
         if (requestRef.current) cancelAnimationFrame(requestRef.current);
         if (narrationSourceRef.current) try { narrationSourceRef.current.stop(); } catch(e) {}
-        if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
+        if (bgMusicElementRef.current) bgMusicElementRef.current.pause();
     };
-  }, [scenes]);
+  }, [scenes, backgroundMusicUrl]);
 
-  // --- SCENE MEDIA CONTROL ---
+  // --- PLAYBACK HELPERS ---
   const stopSceneMedia = useCallback(() => {
-     // Stop all videos
      Object.values(assetsRef.current.videos).forEach((v) => {
          const videoEl = v as HTMLVideoElement;
          if (!videoEl.paused) videoEl.pause();
      });
-     // Stop narration
      if (narrationSourceRef.current) {
         try { narrationSourceRef.current.stop(); } catch(e) {}
         narrationSourceRef.current = null;
@@ -208,20 +235,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
 
   const playSceneMedia = useCallback((index: number, destination?: MediaStreamAudioDestinationNode) => {
     if (!audioContextRef.current) return;
-    
     stopSceneMedia();
 
     const scene = scenes[index];
     if (!scene) return;
 
-    // 1. Play Video (if applicable)
+    // Play Video
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
         vid.currentTime = 0;
         vid.play().catch(e => console.warn("Video play failed:", e));
     }
 
-    // 2. Play Narration
+    // Play Narration
     if (assetsRef.current.audioBuffers[scene.id]) {
         const source = audioContextRef.current.createBufferSource();
         source.buffer = assetsRef.current.audioBuffers[scene.id];
@@ -237,7 +263,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
     }
   }, [scenes, stopSceneMedia]);
 
-  // --- RENDER LOOP ---
+  // --- MAIN LOOP ---
   const drawScene = useCallback((timestamp: number, exportDest?: MediaStreamAudioDestinationNode) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -249,13 +275,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
 
     if (!scene) {
         setIsPlaying(false);
+        if (bgMusicElementRef.current) bgMusicElementRef.current.pause();
         return;
     }
 
-    // Initialize timestamp for this scene
     if (sceneStartTimestamp === 0) {
         stateRef.current.sceneStartTimestamp = timestamp;
-        // KICKSTART MEDIA PLAYBACK ONCE PER SCENE
         playSceneMedia(currentSceneIndex, exportDest);
     }
     
@@ -263,11 +288,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
     const duration = scene.duration || 3;
     const progress = Math.min(elapsedTime / duration, 1);
 
-    // --- DRAWING ---
+    // Render Logic
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Visual
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
         if (vid.readyState >= 2) {
@@ -278,15 +302,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
         }
     } else if (assetsRef.current.images[scene.id]) {
         const img = assetsRef.current.images[scene.id];
-        // Ken Burns
         const scaleBase = Math.max(canvas.width / img.width, canvas.height / img.height);
-        const scale = scaleBase * (1 + 0.08 * progress); // 8% zoom
+        const scale = scaleBase * (1 + 0.08 * progress);
         const x = (canvas.width - img.width * scale) / 2;
         const y = (canvas.height - img.height * scale) / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
     }
 
-    // Text Overlay
+    // Captions
     if (showCaptions) {
         const overlayHeight = isLandscape ? 120 : 200;
         const gradient = ctx.createLinearGradient(0, canvas.height - overlayHeight, 0, canvas.height);
@@ -309,17 +332,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
         const maxWidth = canvas.width - (isLandscape ? 100 : 80);
         
         for (let n = 0; n < words.length; n++) {
-        const testLine = line + words[n] + ' ';
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && n > 0) {
-            lines.push(line);
-            line = words[n] + ' ';
-        } else {
-            line = testLine;
-        }
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && n > 0) {
+                lines.push(line);
+                line = words[n] + ' ';
+            } else {
+                line = testLine;
+            }
         }
         lines.push(line);
-
         const lineHeight = isLandscape ? 40 : 50;
         const textBottomMargin = isLandscape ? 40 : 80;
         
@@ -328,26 +350,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
         });
     }
 
-    // --- TRANSITION ---
+    // Transition Logic
     if (elapsedTime >= duration) {
-        // Explicitly pause old video
         if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
              assetsRef.current.videos[scene.id].pause();
         }
 
         if (currentSceneIndex < scenes.length - 1) {
-            // Advance
             const nextIndex = currentSceneIndex + 1;
             setCurrentSceneIndex(nextIndex); 
             stateRef.current.currentSceneIndex = nextIndex;
             stateRef.current.sceneStartTimestamp = 0; 
         } else {
-            // End
+            // FINISHED
             stopSceneMedia();
             setIsPlaying(false);
             setCurrentSceneIndex(0); 
             stateRef.current.isPlaying = false;
             stateRef.current.sceneStartTimestamp = 0; 
+            
+            // Stop BG Music
+            if (bgMusicElementRef.current) {
+                bgMusicElementRef.current.pause();
+                bgMusicElementRef.current.currentTime = 0;
+            }
             
             if (isExporting && (window as any).mediaRecorder?.state === 'recording') {
                 (window as any).mediaRecorder.stop();
@@ -362,7 +388,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
   }, [scenes, isLandscape, playSceneMedia, stopSceneMedia, showCaptions]);
 
 
-  // --- CONTROLS ---
+  // --- USER ACTIONS ---
   const togglePlay = async () => {
     if (isPlaying) {
       // PAUSE
@@ -370,11 +396,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
       stateRef.current.isPlaying = false;
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       stopSceneMedia();
+      if (bgMusicElementRef.current) bgMusicElementRef.current.pause();
 
     } else {
       // PLAY
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
           await audioContextRef.current.resume();
+      }
+      
+      // Start BG Music
+      if (bgMusicElementRef.current) {
+          bgMusicElementRef.current.play().catch(e => console.warn("BG Music play failed:", e));
       }
       
       setIsPlaying(true);
@@ -408,14 +440,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
         await audioContextRef.current.resume();
      }
 
+     // Setup Recording Stream
      const stream = canvasRef.current.captureStream(30);
      const dest = audioContextRef.current.createMediaStreamDestination();
      
-     // Ensure Audio Tracks exist before recording
+     // Route BG Music to destination for recording
+     if (bgMusicSourceRef.current && bgMusicGainRef.current) {
+         // Disconnect from speakers to avoid double playing? No, export happens silently usually or needs to be heard.
+         // Actually, for export we want it to go to 'dest'.
+         // Re-connect logic for export:
+         bgMusicGainRef.current.disconnect(); 
+         bgMusicGainRef.current.connect(dest); // Connect to recorder
+         // Note: Users won't hear music during export if we disconnect destination, but that's fine.
+     }
+     
+     // Play BG Music
+     if (bgMusicElementRef.current) {
+         bgMusicElementRef.current.play();
+     }
+
      if (dest.stream.getAudioTracks().length > 0) {
         stream.addTrack(dest.stream.getAudioTracks()[0]);
-     } else {
-         console.warn("No audio tracks found on destination stream yet.");
      }
 
      const recorder = new MediaRecorder(stream, { 
@@ -434,9 +479,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation }) => {
         a.click();
         URL.revokeObjectURL(url);
         
+        // Reset BG Music routing
+        if (bgMusicGainRef.current && audioContextRef.current) {
+            bgMusicGainRef.current.disconnect();
+            bgMusicGainRef.current.connect(audioContextRef.current.destination);
+        }
+        
         setIsExporting(false);
         setIsPlaying(false);
         stopSceneMedia();
+        if (bgMusicElementRef.current) bgMusicElementRef.current.pause();
         (window as any).mediaRecorder = null;
      };
 

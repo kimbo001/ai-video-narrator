@@ -1,12 +1,12 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
 import { analyzeScript, generateNarration } from '../services/gemini';
-import { fetchPixabayMedia } from '../services/pixabay';
+import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Monitor, Smartphone, Mic, Focus, Ban, Upload, ArrowLeft } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Monitor, Smartphone, Mic, Focus, Ban, Upload, ArrowLeft, Music } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
@@ -20,7 +20,7 @@ interface GeneratorProps {
 
 const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [script, setScript] = useState(DEFAULT_SCRIPT);
-  const [config, setConfig] = useState<AppConfig>({
+  const [config, setConfig] = useState<AppConfig & { includeMusic: boolean }>({
     pixabayApiKey: DEFAULT_PIXABAY_KEY,
     pexelsApiKey: DEFAULT_PEXELS_KEY,
     unsplashApiKey: DEFAULT_UNSPLASH_KEY,
@@ -28,14 +28,39 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     visualSubject: '',
     voiceName: 'Kore',
     negativePrompt: '',
+    includeMusic: true
   });
   const [status, setStatus] = useState<GenerationStatus>({ step: 'idle' });
   const [scenes, setScenes] = useState<Scene[]>([]);
+  const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
+  
+  // Usage Tracking
+  const [generationsToday, setGenerationsToday] = useState(0);
+  const [isPro, setIsPro] = useState(false);
+
+  useEffect(() => {
+      // Check Pro status
+      const license = localStorage.getItem('license_key');
+      setIsPro(!!license);
+
+      // Check daily usage
+      const usageRaw = localStorage.getItem('app_usage');
+      const today = new Date().toDateString();
+      if (usageRaw) {
+          const usage = JSON.parse(usageRaw);
+          if (usage.date === today) {
+              setGenerationsToday(usage.count);
+          } else {
+              setGenerationsToday(0);
+              localStorage.setItem('app_usage', JSON.stringify({ date: today, count: 0 }));
+          }
+      }
+  }, []);
   
   const usedMediaUrlsRef = useRef<Set<string>>(new Set());
 
   const updateConfig = (newConfig: AppConfig) => {
-    setConfig(newConfig);
+    setConfig(prev => ({ ...prev, ...newConfig }));
   };
 
   const getStockMediaForScene = async (
@@ -93,18 +118,40 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   };
 
   const handleGenerate = async () => {
+    // 1. Check Usage Limits
+    if (!isPro && generationsToday >= 5) {
+        alert("Daily limit reached (5/5). Please upgrade to Lifetime for unlimited videos!");
+        return;
+    }
+
     if (!process.env.API_KEY) {
        console.warn("API_KEY is likely missing from environment variables.");
     }
 
     try {
       setScenes([]);
+      setBackgroundMusicUrl(null);
       usedMediaUrlsRef.current = new Set();
       
       setStatus({ step: 'analyzing', message: 'Analyzing script & creating storyboard...' });
       
       const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject);
       
+      // FETCH MUSIC if enabled
+      if (config.includeMusic) {
+          setStatus({ step: 'fetching_media', message: 'Searching for background music...' });
+          // Use visual subject as mood or default to cinematic
+          const mood = config.visualSubject || 'cinematic ambient';
+          const musicUrl = await fetchPixabayAudio(config.pixabayApiKey, mood);
+          if (musicUrl) {
+              setBackgroundMusicUrl(musicUrl);
+          } else {
+              // Fallback
+              const fallbackMusic = await fetchPixabayAudio(config.pixabayApiKey, 'background music');
+              if (fallbackMusic) setBackgroundMusicUrl(fallbackMusic);
+          }
+      }
+
       setStatus({ step: 'fetching_media', message: 'Finding stock media...' });
       
       const scenesWithMedia: Scene[] = [];
@@ -165,19 +212,21 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
+      
+      // Update Usage Logic
+      const newCount = generationsToday + 1;
+      setGenerationsToday(newCount);
+      localStorage.setItem('app_usage', JSON.stringify({ date: new Date().toDateString(), count: newCount }));
 
     } catch (error: any) {
       console.error("Generation Error:", error);
-      
       let errorMessage = 'Something went wrong. Please check your API keys or try again.';
-      const errString = JSON.stringify(error) + (error.message || '');
-
-      if (errString.includes('leaked') || errString.includes('revoked')) {
-          errorMessage = 'ACCESS DENIED: Your Google API Key was disabled because it was detected in public code. Please generate a NEW key at aistudio.google.com and update your Vercel Environment Variables.';
-      } else if (errString.includes('403') || errString.includes('PERMISSION_DENIED')) {
-          errorMessage = 'Access Denied (403). Your API Key is missing or invalid. Please check Vercel settings.';
+      if (typeof error === 'object' && error !== null) {
+          const errString = JSON.stringify(error) + (error.message || '');
+          if (errString.includes('leaked') || errString.includes('revoked')) {
+              errorMessage = 'ACCESS DENIED: API Key invalid.';
+          }
       }
-
       setStatus({ step: 'error', message: errorMessage });
     }
   };
@@ -236,7 +285,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
   return (
     <div className="flex-1 max-w-[1600px] mx-auto p-4 lg:p-8 w-full h-full flex flex-col">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
             <button 
                 onClick={onBack}
                 className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium"
@@ -244,6 +293,12 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                 <ArrowLeft className="w-4 h-4" />
                 Back to Home
             </button>
+            
+            {!isPro && (
+                <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
+                    Daily Limit: <span className={generationsToday >= 5 ? 'text-red-500' : 'text-cyan-500'}>{generationsToday}</span>/5
+                </div>
+            )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full flex-1 min-h-0">
@@ -265,6 +320,20 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             </div>
 
             <SettingsPanel config={config} onConfigChange={updateConfig} />
+            
+            {/* Music Toggle */}
+            <div className="bg-[#11141b] border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                        <Music className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <span className="text-sm font-medium text-zinc-300">Background Music</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={config.includeMusic} onChange={(e) => setConfig(prev => ({...prev, includeMusic: e.target.checked}))} />
+                    <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                </label>
+            </div>
             
              <button 
                 onClick={handleGenerate}
@@ -302,7 +371,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                 </div>
 
                 <div className="h-[480px] shrink-0 bg-[#0b0e14] rounded-xl border border-zinc-800 overflow-hidden relative flex flex-col items-center justify-center mb-6">
-                    <VideoPlayer scenes={scenes} orientation={config.orientation} />
+                    <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} />
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">

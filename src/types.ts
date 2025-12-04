@@ -1,3 +1,4 @@
+
 export enum VideoOrientation {
   Landscape = 'horizontal',
   Portrait = 'vertical'
@@ -29,3 +30,5 @@ export interface AppConfig {
   voiceName: string; // Gemini voice name
   negativePrompt: string;
 }
+
+export type Page = 'home' | 'generator' | 'pricing' | 'legal';
