@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
