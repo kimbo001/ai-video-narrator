@@ -14,7 +14,9 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
   const [activationMsg, setActivationMsg] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // TODO: Replace this with your actual Gumroad Product Permalink (e.g. 'avai-lifetime')
+  // ---------------------------------------------------------
+  // UPDATED: Matches your URL https://kimbosaurus.gumroad.com/l/AIVideoNarrator
+  // ---------------------------------------------------------
   const GUMROAD_PRODUCT_PERMALINK = 'AIVideoNarrator'; 
 
   useEffect(() => {
@@ -35,6 +37,8 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
       setActivationMsg('');
 
       try {
+          console.log(`Verifying key for product: ${GUMROAD_PRODUCT_PERMALINK}`);
+          
           const res = await fetch('/api/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -51,7 +55,8 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
               setIsPro(true);
               setActivationMsg('License activated successfully! You now have unlimited access.');
           } else {
-              setActivationMsg(data.error || 'Invalid license key.');
+              console.error("Verification failed:", data);
+              setActivationMsg(data.error || 'Invalid or refunded license.');
               setIsPro(false);
           }
       } catch (error) {
@@ -97,21 +102,23 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
                   <button onClick={handleDeactivate} className="text-xs text-zinc-500 hover:text-zinc-300 underline">Deactivate Device</button>
               </div>
           ) : (
-              <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={licenseKey}
-                    onChange={(e) => setLicenseKey(e.target.value)}
-                    placeholder="Enter Gumroad License Key"
-                    className="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm focus:border-cyan-500 outline-none"
-                  />
-                  <button 
-                    onClick={handleActivate}
-                    disabled={isVerifying}
-                    className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activate'}
-                  </button>
+              <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input 
+                        type="text" 
+                        value={licenseKey}
+                        onChange={(e) => setLicenseKey(e.target.value)}
+                        placeholder="Enter Gumroad License Key"
+                        className="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm focus:border-cyan-500 outline-none"
+                    />
+                    <button 
+                        onClick={handleActivate}
+                        disabled={isVerifying}
+                        className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activate'}
+                    </button>
+                  </div>
               </div>
           )}
           {activationMsg && <p className={`text-xs mt-3 ${activationMsg.includes('Invalid') || activationMsg.includes('error') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
@@ -184,7 +191,7 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
               </button>
           ) : (
               <button 
-                onClick={() => window.open('https://gumroad.com', '_blank')} 
+                onClick={() => window.open('https://kimbosaurus.gumroad.com/l/AIVideoNarrator', '_blank')} 
                 className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
               >
                 Buy on Gumroad
