@@ -13,6 +13,7 @@ export interface Scene {
   audioData?: string; // Base64 PCM
   duration?: number; // Calculated duration in seconds
   isRegenerating?: boolean; // UI state for regeneration
+  isBranding?: boolean; // Flag for the outro slide
 }
 
 export interface GenerationStatus {

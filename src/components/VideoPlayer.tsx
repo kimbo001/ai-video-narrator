@@ -8,9 +8,10 @@ interface VideoPlayerProps {
   scenes: Scene[];
   orientation: VideoOrientation;
   backgroundMusicUrl?: string | null;
+  musicVolume?: number;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgroundMusicUrl }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgroundMusicUrl, musicVolume = 0.3 }) => {
   // --- STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
@@ -28,7 +29,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
   // Audio Sources
   const narrationSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const bgMusicElementRef = useRef<HTMLAudioElement | null>(null);
-  const bgMusicSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const bgMusicGainRef = useRef<GainNode | null>(null);
   
   const requestRef = useRef<number>(0);
@@ -51,6 +51,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
     stateRef.current.orientation = orientation;
     stateRef.current.showCaptions = showCaptions;
   }, [currentSceneIndex, isPlaying, isExporting, orientation, showCaptions]);
+
+  // Update Music Volume
+  useEffect(() => {
+      if (bgMusicGainRef.current) {
+          // Smooth transition for volume changes
+          const now = audioContextRef.current?.currentTime || 0;
+          bgMusicGainRef.current.gain.setTargetAtTime(musicVolume, now, 0.1);
+      }
+  }, [musicVolume]);
 
   // Assets
   const assetsRef = useRef<{
@@ -75,13 +84,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
 
     // Reset state
     setIsPlaying(false);
-    if (currentSceneIndex >= scenes.length) {
-        setCurrentSceneIndex(0);
-        stateRef.current.sceneStartTimestamp = 0;
-    } else {
-        stateRef.current.isPlaying = false;
-        stateRef.current.sceneStartTimestamp = 0; 
-    }
+    setCurrentSceneIndex(0);
+    stateRef.current.isPlaying = false;
+    stateRef.current.sceneStartTimestamp = 0; 
 
     if (scenes.length === 0) {
       setIsReady(false);
@@ -170,7 +175,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
             audio.loop = true;
             bgMusicElementRef.current = audio;
             
-            // Wait for metadata so we know it's playable
             await new Promise((resolve) => {
                 audio.onloadedmetadata = resolve;
                 audio.onerror = () => {
@@ -179,22 +183,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
                 };
             });
 
-            // Connect to AudioContext for volume control and export
             if (audioContextRef.current) {
-                // Check if we already created a source for this element? 
-                // Creating MediaElementSource twice on same element throws error.
-                // We will create it once when we start playing if needed, 
-                // or just use a simple gain node logic.
-                // NOTE: To avoid "MediaElementAudioSourceNode" errors on re-renders,
-                // we reconstruct the Audio element every time URL changes (which we did above).
                 try {
                     const source = audioContextRef.current.createMediaElementSource(audio);
                     const gain = audioContextRef.current.createGain();
-                    gain.gain.value = 0.15; // Low background volume
+                    gain.gain.value = musicVolume; 
                     source.connect(gain);
                     gain.connect(audioContextRef.current.destination);
-                    
-                    bgMusicSourceRef.current = source;
                     bgMusicGainRef.current = gain;
                 } catch(e) {
                     console.warn("Audio routing error:", e);
@@ -288,9 +283,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
     const duration = scene.duration || 3;
     const progress = Math.min(elapsedTime / duration, 1);
 
-    // Render Logic
+    // --- SMOOTH CROSS FADE OPACITY ---
+    // Fade IN (0->1) over first 0.5s, Fade OUT (1->0) over last 0.5s
+    const fadeDuration = 0.5;
+    let alpha = 1;
+    if (elapsedTime < fadeDuration) {
+        alpha = elapsedTime / fadeDuration;
+    } else if (elapsedTime > duration - fadeDuration) {
+        alpha = (duration - elapsedTime) / fadeDuration;
+    }
+    // Clamp
+    alpha = Math.max(0, Math.min(1, alpha));
+
+    // Draw Black Background first
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Apply Opacity
+    ctx.globalAlpha = alpha;
 
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
@@ -309,8 +319,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
     }
 
-    // Captions
+    // Reset Alpha for Text
+    ctx.globalAlpha = 1;
+
+    // Captions (Opacity follows scene or stays visible? Usually follows scene for smooth cut)
     if (showCaptions) {
+        ctx.globalAlpha = alpha; // Fade text with scene
         const overlayHeight = isLandscape ? 120 : 200;
         const gradient = ctx.createLinearGradient(0, canvas.height - overlayHeight, 0, canvas.height);
         gradient.addColorStop(0, 'rgba(0,0,0,0)');
@@ -348,6 +362,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         lines.reverse().forEach((l, i) => {
            ctx.fillText(l, canvas.width / 2, canvas.height - textBottomMargin - (i * lineHeight));
         });
+        ctx.globalAlpha = 1; // Reset
     }
 
     // Transition Logic
@@ -369,7 +384,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
             stateRef.current.isPlaying = false;
             stateRef.current.sceneStartTimestamp = 0; 
             
-            // Stop BG Music
             if (bgMusicElementRef.current) {
                 bgMusicElementRef.current.pause();
                 bgMusicElementRef.current.currentTime = 0;
@@ -391,7 +405,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
   // --- USER ACTIONS ---
   const togglePlay = async () => {
     if (isPlaying) {
-      // PAUSE
       setIsPlaying(false);
       stateRef.current.isPlaying = false;
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
@@ -399,23 +412,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
       if (bgMusicElementRef.current) bgMusicElementRef.current.pause();
 
     } else {
-      // PLAY
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
           await audioContextRef.current.resume();
       }
       
-      // Start BG Music
       if (bgMusicElementRef.current) {
           bgMusicElementRef.current.play().catch(e => console.warn("BG Music play failed:", e));
       }
       
       setIsPlaying(true);
       stateRef.current.isPlaying = true;
-      // If we are resuming from 0, reset timestamp
       if (!requestRef.current) {
           stateRef.current.sceneStartTimestamp = 0;
       }
-      
       requestRef.current = requestAnimationFrame((t) => drawScene(t));
     }
   };
@@ -423,14 +432,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
   const handleExport = async () => {
      if (!canvasRef.current || !audioContextRef.current) return;
      
-     // Stop any current playback
      stopSceneMedia();
-     
      setIsExporting(true);
      setIsPlaying(true); 
      setCurrentSceneIndex(0);
      
-     // Reset loop state
      stateRef.current.currentSceneIndex = 0;
      stateRef.current.isPlaying = true;
      stateRef.current.isExporting = true;
@@ -440,24 +446,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         await audioContextRef.current.resume();
      }
 
-     // Setup Recording Stream
      const stream = canvasRef.current.captureStream(30);
      const dest = audioContextRef.current.createMediaStreamDestination();
      
-     // Route BG Music to destination for recording
-     if (bgMusicSourceRef.current && bgMusicGainRef.current) {
-         // Disconnect from speakers to avoid double playing? No, export happens silently usually or needs to be heard.
-         // Actually, for export we want it to go to 'dest'.
-         // Re-connect logic for export:
+     if (bgMusicGainRef.current) {
          bgMusicGainRef.current.disconnect(); 
-         bgMusicGainRef.current.connect(dest); // Connect to recorder
-         // Note: Users won't hear music during export if we disconnect destination, but that's fine.
+         bgMusicGainRef.current.connect(dest); 
      }
      
-     // Play BG Music
-     if (bgMusicElementRef.current) {
-         bgMusicElementRef.current.play();
-     }
+     if (bgMusicElementRef.current) bgMusicElementRef.current.play();
 
      if (dest.stream.getAudioTracks().length > 0) {
         stream.addTrack(dest.stream.getAudioTracks()[0]);
@@ -479,7 +476,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         a.click();
         URL.revokeObjectURL(url);
         
-        // Reset BG Music routing
         if (bgMusicGainRef.current && audioContextRef.current) {
             bgMusicGainRef.current.disconnect();
             bgMusicGainRef.current.connect(audioContextRef.current.destination);
@@ -493,11 +489,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
      };
 
      (window as any).mediaRecorder = recorder;
-     
-     // Start recording immediately
      recorder.start();
-     
-     // Start loop
      requestRef.current = requestAnimationFrame((t) => drawScene(t, dest));
   };
   

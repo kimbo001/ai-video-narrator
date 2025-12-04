@@ -6,7 +6,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Monitor, Smartphone, Mic, Focus, Ban, Upload, ArrowLeft, Music, FileAudio } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Music, FileAudio, Volume2 } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
@@ -34,6 +34,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
   const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [musicVolume, setMusicVolume] = useState(0.3); // Default 30% volume
   
   // Usage Tracking
   const [generationsToday, setGenerationsToday] = useState(0);
@@ -204,7 +205,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
       setStatus({ step: 'generating_audio', message: `Narrating with Gemini...` });
       
-      const finalScenes = await Promise.all(
+      let finalScenes = await Promise.all(
         scenesWithMedia.map(async (scene) => {
           try {
             const audioData = await generateNarration(scene.narration, config.voiceName);
@@ -215,6 +216,23 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           }
         })
       );
+
+      // --- BRANDING SCENE FOR FREE USERS ---
+      if (!isPro) {
+          const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
+          const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
+          
+          finalScenes.push({
+              id: 'branding-' + Date.now(),
+              narration: 'Made with AI Video Narrator. Create your own video today.',
+              visualSearchTerm: 'logo',
+              mediaType: 'image',
+              mediaUrl: `https://placehold.co/${width}x${height}/000000/FFF?text=Made+with+AI+Video+Narrator`,
+              audioData: await generateNarration('Made with AI Video Narrator.', config.voiceName),
+              duration: 3,
+              isBranding: true
+          } as Scene);
+      }
 
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
@@ -309,72 +327,95 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full flex-1 min-h-0">
           
-          {/* Left Column */}
-          <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-y-auto custom-scrollbar pr-2">
+          {/* Left Column - Fixed Layout with Sticky Footer */}
+          <div className="lg:col-span-4 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden relative">
             
-            <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 flex flex-col shadow-lg">
-               <h2 className="text-white font-semibold text-lg mb-4">Your Story</h2>
-               <textarea
-                  value={script}
-                  onChange={(e) => setScript(e.target.value)}
-                  className="flex-1 min-h-[150px] w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-4"
-                  placeholder="Enter your story script here..."
-               />
-               <div className="flex items-center justify-end">
-                  <span className="text-xs text-zinc-500 font-mono">{script.length} chars</span>
-               </div>
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-24">
+                <div className="mb-6">
+                   <h2 className="text-white font-semibold text-lg mb-4">Your Story</h2>
+                   <textarea
+                      value={script}
+                      onChange={(e) => setScript(e.target.value)}
+                      className="w-full min-h-[150px] bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-2"
+                      placeholder="Enter your story script here..."
+                   />
+                   <div className="flex items-center justify-end">
+                      <span className="text-xs text-zinc-500 font-mono">{script.length} chars</span>
+                   </div>
+                </div>
+
+                <SettingsPanel config={config} onConfigChange={updateConfig} />
+                
+                {/* Music Control Section */}
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-4 mb-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                                <Music className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <span className="text-sm font-medium text-zinc-300">Background Music</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" className="sr-only peer" checked={config.includeMusic} onChange={(e) => setConfig(prev => ({...prev, includeMusic: e.target.checked}))} />
+                            <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                        </label>
+                    </div>
+                    
+                    {config.includeMusic && (
+                        <div className="space-y-4 pt-2 border-t border-zinc-800/50">
+                            {/* Upload */}
+                            <div className="flex items-center gap-3">
+                                <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg text-xs text-zinc-400 hover:text-white hover:border-zinc-500 cursor-pointer transition-all">
+                                    <FileAudio className="w-3 h-3" />
+                                    <span>{musicFile ? musicFile.name.substring(0, 15) + '...' : 'Upload MP3'}</span>
+                                    <input type="file" accept="audio/mp3,audio/wav" className="hidden" onChange={(e) => {
+                                        if (e.target.files?.[0]) setMusicFile(e.target.files[0]);
+                                    }} />
+                                </label>
+                                {musicFile && <button onClick={() => setMusicFile(null)} className="text-xs text-red-400 hover:underline px-2">Remove</button>}
+                            </div>
+
+                            {/* Volume */}
+                            <div className="flex items-center gap-3">
+                                <Volume2 className="w-4 h-4 text-zinc-500" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="1" 
+                                    step="0.05" 
+                                    value={musicVolume} 
+                                    onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                                    className="flex-1 h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <SettingsPanel config={config} onConfigChange={updateConfig} />
-            
-            {/* Music Toggle & Upload */}
-            <div className="bg-[#11141b] border border-zinc-800 rounded-xl p-4 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                            <Music className="w-4 h-4 text-indigo-400" />
-                        </div>
-                        <span className="text-sm font-medium text-zinc-300">Background Music</span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" checked={config.includeMusic} onChange={(e) => setConfig(prev => ({...prev, includeMusic: e.target.checked}))} />
-                        <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-                    </label>
-                </div>
-                
-                {config.includeMusic && (
-                    <div className="flex items-center gap-3 pl-11">
-                        <label className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-zinc-400 hover:text-white hover:border-zinc-500 cursor-pointer transition-all">
-                            <FileAudio className="w-3 h-3" />
-                            <span>{musicFile ? musicFile.name.substring(0, 15) + '...' : 'Upload MP3'}</span>
-                            <input type="file" accept="audio/mp3,audio/wav" className="hidden" onChange={(e) => {
-                                if (e.target.files?.[0]) setMusicFile(e.target.files[0]);
-                            }} />
-                        </label>
-                        {musicFile && <button onClick={() => setMusicFile(null)} className="text-xs text-red-400 hover:underline">Remove</button>}
-                    </div>
-                )}
+            {/* Sticky Footer */}
+            <div className="absolute bottom-0 left-0 right-0 p-5 bg-[#11141b]/95 backdrop-blur-md border-t border-zinc-800 z-10">
+                 <button 
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !script.trim()}
+                    className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-3.5 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-3"
+                 >
+                    {isGenerating ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            {status.step === 'analyzing' && 'Analyzing...'}
+                            {status.step === 'fetching_media' && 'Fetching Media...'}
+                            {status.step === 'generating_audio' && 'Recording...'}
+                        </>
+                    ) : (
+                        <>
+                            <Wand2 className="w-5 h-5" />
+                            Generate Video
+                        </>
+                    )}
+                 </button>
             </div>
-            
-             <button 
-                onClick={handleGenerate}
-                disabled={isGenerating || !script.trim()}
-                className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-3 mt-auto"
-             >
-                {isGenerating ? (
-                    <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        {status.step === 'analyzing' && 'Analyzing Script...'}
-                        {status.step === 'fetching_media' && 'Finding Stock Media...'}
-                        {status.step === 'generating_audio' && 'Recording Voice...'}
-                    </>
-                ) : (
-                    <>
-                        <Wand2 className="w-5 h-5" />
-                        Generate Video
-                    </>
-                )}
-             </button>
 
           </div>
 
@@ -392,7 +433,12 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                 </div>
 
                 <div className="h-[480px] shrink-0 bg-[#0b0e14] rounded-xl border border-zinc-800 overflow-hidden relative flex flex-col items-center justify-center mb-6">
-                    <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} />
+                    <VideoPlayer 
+                        scenes={scenes} 
+                        orientation={config.orientation} 
+                        backgroundMusicUrl={backgroundMusicUrl} 
+                        musicVolume={musicVolume}
+                    />
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
@@ -429,24 +475,28 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                             <button 
                                                 onClick={() => handleRegenerateScene(scene.id)}
-                                                disabled={scene.isRegenerating}
-                                                className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors"
+                                                disabled={scene.isRegenerating || scene.isBranding}
+                                                className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Regenerate Visual"
                                             >
                                                 <RefreshCw className={`w-4 h-4 ${scene.isRegenerating ? 'animate-spin' : ''}`} />
                                             </button>
-                                            <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer" title="Upload Media">
-                                                <Upload className="w-4 h-4" />
-                                                <input 
-                                                    type="file" 
-                                                    className="hidden" 
-                                                    accept="image/*,video/*"
-                                                    onChange={(e) => handleFileUpload(scene.id, e)}
-                                                />
-                                            </label>
+                                            {!scene.isBranding && (
+                                                <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer" title="Upload Media">
+                                                    <Upload className="w-4 h-4" />
+                                                    <input 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept="image/*,video/*"
+                                                        onChange={(e) => handleFileUpload(scene.id, e)}
+                                                    />
+                                                </label>
+                                            )}
                                         </div>
                                     </div>
-                                    <p className="mt-1.5 text-[10px] text-zinc-500 truncate">Scene {idx+1}</p>
+                                    <p className="mt-1.5 text-[10px] text-zinc-500 truncate">
+                                        {scene.isBranding ? <span className="text-cyan-500 font-bold">Outro</span> : `Scene ${idx+1}`}
+                                    </p>
                                 </div>
                             ))}
                         </div>
