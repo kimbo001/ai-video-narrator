@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, ArrowLeft, Key, Lock, Unlock, Loader2 } from 'lucide-react';
+import { Check, ArrowLeft, Key, Lock, Unlock, Loader2, Zap, Clock } from 'lucide-react';
 import { Page } from '../types';
 
 interface PricingProps {
@@ -13,7 +13,6 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
   const [activationMsg, setActivationMsg] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // UPDATED: Using Product ID as requested by Gumroad Error
   const GUMROAD_PRODUCT_ID = 'IKQUftD2-Z1zgm1zoHAWUA=='; 
 
   useEffect(() => {
@@ -34,8 +33,6 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
       setActivationMsg('');
 
       try {
-          console.log(`Verifying key for product ID: ${GUMROAD_PRODUCT_ID}`);
-          
           const res = await fetch('/api/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -52,12 +49,10 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
               setIsPro(true);
               setActivationMsg('License activated successfully! You now have unlimited access.');
           } else {
-              console.error("Verification failed:", data);
               setActivationMsg(data.error || 'Invalid or refunded license.');
               setIsPro(false);
           }
       } catch (error) {
-          console.error("Verification error:", error);
           setActivationMsg('Connection error. Please try again.');
       } finally {
           setIsVerifying(false);
@@ -87,7 +82,7 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
       </div>
 
       {/* Activation Section */}
-      <div className="max-w-xl mx-auto mb-16 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+      <div className="max-w-xl mx-auto mb-16 bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
           <div className="flex items-center gap-3 mb-4">
               {isPro ? <Unlock className="text-green-500 w-5 h-5" /> : <Key className="text-cyan-500 w-5 h-5" />}
               <h3 className="text-white font-semibold">{isPro ? 'Lifetime License Active' : 'Activate Lifetime License'}</h3>
@@ -142,10 +137,6 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
               <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
               <span>720p Export Quality</span>
             </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
-              <span>Standard AI Voices</span>
-            </li>
           </ul>
           <button disabled={true} className="w-full py-3 rounded-xl border border-zinc-700 text-zinc-400 font-semibold cursor-default">
             {isPro ? 'Upgraded' : 'Current Plan'}
@@ -174,11 +165,7 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
             </li>
             <li className="flex items-center gap-3 text-zinc-300">
               <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Priority 1080p Processing</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Support Future Updates</span>
+              <span>Upload Custom Music</span>
             </li>
           </ul>
           
@@ -189,9 +176,9 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
           ) : (
               <button 
                 onClick={() => window.open('https://kimbosaurus.gumroad.com/l/AIVideoNarrator', '_blank')} 
-                className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
+                className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2"
               >
-                Buy on Gumroad
+                Buy on Gumroad <Zap className="w-4 h-4 fill-black" />
               </button>
           )}
           {!isPro && <p className="text-center text-xs text-zinc-500 mt-3">Receive license key instantly via email</p>}

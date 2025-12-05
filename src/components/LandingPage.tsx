@@ -47,7 +47,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
               aria-label="View pricing plans"
             >
               <Zap className="w-5 h-5 text-yellow-400" />
-              Get Pro (Fast Speed)
+              Get Pro (Unlimited)
             </button>
           </div>
           
@@ -95,9 +95,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
               <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-6">
                 <Zap className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Instant Rendering</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Unlimited Videos</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Upgrade to Pro for priority processing speeds. Generate unlimited videos instantly without waiting.
+                Upgrade to Pro to remove the daily limit. Generate as many videos as you need for your channels.
               </p>
             </article>
           </div>

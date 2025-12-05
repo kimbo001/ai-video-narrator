@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { Scene, VideoOrientation } from '../types';
+import { Scene } from '../types';
 
 export const analyzeScript = async (script: string, globalTopic?: string): Promise<{ scenes: Scene[] }> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -57,10 +57,9 @@ export const analyzeScript = async (script: string, globalTopic?: string): Promi
 
     return { scenes };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    // Throw the original error so the UI can detect 'leaked key' messages
-    throw error;
+    throw new Error("Failed to analyze script.");
   }
 };
 
