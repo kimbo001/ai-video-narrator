@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -6,7 +5,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Music, FileAudio, Volume2 } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Music, FileAudio, Volume2, Clock } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
@@ -36,9 +35,10 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [musicFile, setMusicFile] = useState<File | null>(null);
   const [musicVolume, setMusicVolume] = useState(0.3); // Default 30% volume
   
-  // Usage Tracking
+  // Usage Tracking & Cooldown
   const [generationsToday, setGenerationsToday] = useState(0);
   const [isPro, setIsPro] = useState(false);
+  const [cooldown, setCooldown] = useState(0); // Cooldown in seconds
 
   useEffect(() => {
       // Check Pro status
@@ -58,6 +58,17 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           }
       }
   }, []);
+
+  // Cooldown Timer Effect
+  useEffect(() => {
+    let interval: any;
+    if (cooldown > 0) {
+      interval = setInterval(() => {
+        setCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [cooldown]);
   
   const usedMediaUrlsRef = useRef<Set<string>>(new Set());
 
@@ -126,9 +137,15 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         return;
     }
 
+    // 2. Check Cooldown
+    if (cooldown > 0) return;
+
     if (!process.env.API_KEY) {
        console.warn("API_KEY is likely missing from environment variables.");
     }
+
+    // START COOLDOWN (60 seconds)
+    setCooldown(60);
 
     try {
       setScenes([]);
@@ -341,7 +358,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
              <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#11141b]/95 backdrop-blur-md border-t border-zinc-800 z-10">
                  <button 
                     onClick={handleGenerate}
-                    disabled={isGenerating || !script.trim()}
+                    disabled={isGenerating || !script.trim() || cooldown > 0}
                     className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-3.5 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-3"
                  >
                     {isGenerating ? (
@@ -350,6 +367,11 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                             {status.step === 'analyzing' && 'Analyzing...'}
                             {status.step === 'fetching_media' && 'Fetching...'}
                             {status.step === 'generating_audio' && 'Recording...'}
+                        </>
+                    ) : cooldown > 0 ? (
+                        <>
+                            <Clock className="w-5 h-5 animate-pulse" />
+                            Wait {cooldown}s
                         </>
                     ) : (
                         <>
