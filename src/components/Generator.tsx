@@ -203,8 +203,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
       }
 
-      // --- ULTRA-SAFE AUDIO GENERATION (15 RPM LIMIT FIX) ---
-      // We must wait ~4 seconds between requests to guarantee we don't hit the 15/min limit.
+      // --- ULTRA-SAFE AUDIO GENERATION FOR FREE TIER (15 RPM) ---
+      // Strategy: Wait 5s between calls to stay under 15/min. 
+      // If 429 happens, wait 65s to clear penalty.
       setStatus({ step: 'generating_audio', message: `Narrating scenes (Slow mode for Free Tier)...` });
       
       const finalScenes: Scene[] = [];
@@ -212,9 +213,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           const scene = scenesWithMedia[i];
           setStatus({ step: 'generating_audio', message: `Narrating scene ${i+1}/${scenesWithMedia.length}...` });
           
-          // Wait 4 seconds between requests to strictly respect the 15 RPM limit
+          // STRICT DELAY: 5 seconds between requests (12 RPM max)
           if (i > 0) {
-             await new Promise(r => setTimeout(r, 4000));
+             await new Promise(r => setTimeout(r, 5000));
           }
 
           try {
@@ -223,13 +224,17 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           } catch (e: any) {
               console.error(`TTS failed for scene: ${scene.id}`, e);
               
-              // Smart Retry for 429
-              if (JSON.stringify(e).includes('429') || JSON.stringify(e).includes('RESOURCE_EXHAUSTED')) {
-                  console.warn("Hit Rate Limit. Waiting 10 seconds before retrying...");
-                  setStatus({ step: 'generating_audio', message: `Rate limit hit. Retrying in 10s...` });
-                  await new Promise(r => setTimeout(r, 10000));
+              const errStr = JSON.stringify(e) + (e.message || '');
+              
+              if (errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED')) {
+                  console.warn("Hit Rate Limit Penalty Box. Waiting 65 seconds...");
+                  setStatus({ step: 'generating_audio', message: `Rate limit hit. Pausing 65s to reset quota...` });
+                  
+                  // Wait 65s to clear the minute-long penalty
+                  await new Promise(r => setTimeout(r, 65000));
                   
                   try {
+                      setStatus({ step: 'generating_audio', message: `Retrying scene ${i+1}...` });
                       const retryAudio = await generateNarration(scene.narration, config.voiceName);
                       finalScenes.push({ ...scene, audioData: retryAudio });
                   } catch (retryError) {
