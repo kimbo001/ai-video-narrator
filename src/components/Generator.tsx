@@ -217,8 +217,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         })
       );
 
-      // Branding scene logic removed here
-
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
       
@@ -230,12 +228,17 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     } catch (error: any) {
       console.error("Generation Error:", error);
       let errorMessage = 'Something went wrong. Please check your API keys or try again.';
+      
       if (typeof error === 'object' && error !== null) {
           const errString = JSON.stringify(error) + (error.message || '');
-          if (errString.includes('leaked') || errString.includes('revoked')) {
-              errorMessage = 'ACCESS DENIED: API Key invalid.';
+          
+          if (errString.includes('429') || errString.includes('RESOURCE_EXHAUSTED')) {
+              errorMessage = 'High Traffic: Free tier limits reached. Please wait 60 seconds and try again.';
+          } else if (errString.includes('leaked') || errString.includes('revoked')) {
+              errorMessage = 'ACCESS DENIED: API Key invalid or revoked.';
           }
       }
+      
       setStatus({ step: 'error', message: errorMessage });
     }
   };
@@ -325,11 +328,12 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                  <textarea
                     value={script}
                     onChange={(e) => setScript(e.target.value)}
+                    maxLength={1000}
                     className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-2 min-h-[200px]"
                     placeholder="Enter your story script here..."
                  />
                  <div className="flex items-center justify-end mb-2">
-                    <span className="text-xs text-zinc-500 font-mono">{script.length} chars</span>
+                    <span className="text-xs text-zinc-500 font-mono">{script.length}/1000 chars</span>
                  </div>
              </div>
              
@@ -510,4 +514,3 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 };
 
 export default Generator;
-
