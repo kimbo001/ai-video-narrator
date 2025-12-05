@@ -132,7 +132,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
     if (cooldown > 0) return;
 
-    // Start Cooldown
     setCooldown(60);
 
     try {
@@ -144,7 +143,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       
       const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject);
       
-      // Music Logic
       if (config.includeMusic) {
           if (musicFile) {
               const objectUrl = URL.createObjectURL(musicFile);
@@ -205,23 +203,42 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
       }
 
-      // SEQUENTIAL AUDIO GENERATION (Fixes 429 Rate Limit)
-      setStatus({ step: 'generating_audio', message: `Narrating scenes...` });
+      // --- ULTRA-SAFE AUDIO GENERATION (15 RPM LIMIT FIX) ---
+      // We must wait ~4 seconds between requests to guarantee we don't hit the 15/min limit.
+      setStatus({ step: 'generating_audio', message: `Narrating scenes (Slow mode for Free Tier)...` });
       
       const finalScenes: Scene[] = [];
       for (let i = 0; i < scenesWithMedia.length; i++) {
           const scene = scenesWithMedia[i];
           setStatus({ step: 'generating_audio', message: `Narrating scene ${i+1}/${scenesWithMedia.length}...` });
           
-          // Small delay to be polite to the API
-          await new Promise(r => setTimeout(r, 1000));
+          // Wait 4 seconds between requests to strictly respect the 15 RPM limit
+          if (i > 0) {
+             await new Promise(r => setTimeout(r, 4000));
+          }
 
           try {
               const audioData = await generateNarration(scene.narration, config.voiceName);
               finalScenes.push({ ...scene, audioData });
-          } catch (e) {
+          } catch (e: any) {
               console.error(`TTS failed for scene: ${scene.id}`, e);
-              finalScenes.push(scene);
+              
+              // Smart Retry for 429
+              if (JSON.stringify(e).includes('429') || JSON.stringify(e).includes('RESOURCE_EXHAUSTED')) {
+                  console.warn("Hit Rate Limit. Waiting 10 seconds before retrying...");
+                  setStatus({ step: 'generating_audio', message: `Rate limit hit. Retrying in 10s...` });
+                  await new Promise(r => setTimeout(r, 10000));
+                  
+                  try {
+                      const retryAudio = await generateNarration(scene.narration, config.voiceName);
+                      finalScenes.push({ ...scene, audioData: retryAudio });
+                  } catch (retryError) {
+                      console.error("Retry failed:", retryError);
+                      finalScenes.push(scene); // Push without audio
+                  }
+              } else {
+                  finalScenes.push(scene);
+              }
           }
       }
 
