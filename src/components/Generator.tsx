@@ -5,7 +5,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Music, FileAudio, Volume2, Clock } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Music, FileAudio, Volume2, Clock, Zap } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
@@ -132,7 +132,17 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
     if (cooldown > 0) return;
 
+    // Start Cooldown
     setCooldown(60);
+
+    // Determine which API Key to use
+    // If Pro and the Pro Key exists in env, use it. Otherwise use default.
+    const activeApiKey = (isPro && process.env.API_KEY_PRO) ? process.env.API_KEY_PRO : undefined;
+    const isUsingFastMode = !!activeApiKey; // If we have a specific Pro key, we go fast.
+
+    if (!process.env.API_KEY && !activeApiKey) {
+       console.warn("API_KEY is likely missing from environment variables.");
+    }
 
     try {
       setScenes([]);
@@ -141,7 +151,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       
       setStatus({ step: 'analyzing', message: 'Analyzing script...' });
       
-      const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject);
+      const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject, activeApiKey);
       
       if (config.includeMusic) {
           if (musicFile) {
@@ -203,51 +213,60 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
       }
 
-      // --- ULTRA-SAFE AUDIO GENERATION FOR FREE TIER (15 RPM) ---
-      // Strategy: Wait 5s between calls to stay under 15/min. 
-      // If 429 happens, wait 65s to clear penalty.
-      setStatus({ step: 'generating_audio', message: `Narrating scenes (Slow mode for Free Tier)...` });
-      
-      const finalScenes: Scene[] = [];
-      for (let i = 0; i < scenesWithMedia.length; i++) {
-          const scene = scenesWithMedia[i];
-          setStatus({ step: 'generating_audio', message: `Narrating scene ${i+1}/${scenesWithMedia.length}...` });
+      // --- AUDIO GENERATION LOGIC ---
+      if (isUsingFastMode) {
+          // PRO MODE: Parallel Generation (Fast)
+          setStatus({ step: 'generating_audio', message: `⚡ Pro Mode: Narrating all scenes instantly...` });
           
-          // STRICT DELAY: 5 seconds between requests (12 RPM max)
-          if (i > 0) {
-             await new Promise(r => setTimeout(r, 5000));
-          }
+          const finalScenes = await Promise.all(
+            scenesWithMedia.map(async (scene) => {
+              try {
+                const audioData = await generateNarration(scene.narration, config.voiceName, activeApiKey);
+                return { ...scene, audioData };
+              } catch (e) {
+                console.error(`TTS failed for scene: ${scene.id}`, e);
+                return scene; 
+              }
+            })
+          );
+          setScenes(finalScenes as Scene[]);
 
-          try {
-              const audioData = await generateNarration(scene.narration, config.voiceName);
-              finalScenes.push({ ...scene, audioData });
-          } catch (e: any) {
-              console.error(`TTS failed for scene: ${scene.id}`, e);
+      } else {
+          // FREE MODE: Sequential Generation (Slow, Safe)
+          setStatus({ step: 'generating_audio', message: `Narrating scenes (Slow mode for Free Tier)...` });
+          
+          const finalScenes: Scene[] = [];
+          for (let i = 0; i < scenesWithMedia.length; i++) {
+              const scene = scenesWithMedia[i];
+              setStatus({ step: 'generating_audio', message: `Narrating scene ${i+1}/${scenesWithMedia.length}...` });
               
-              const errStr = JSON.stringify(e) + (e.message || '');
-              
-              if (errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED')) {
-                  console.warn("Hit Rate Limit Penalty Box. Waiting 65 seconds...");
-                  setStatus({ step: 'generating_audio', message: `Rate limit hit. Pausing 65s to reset quota...` });
+              // 5s Delay for Rate Limits
+              if (i > 0) await new Promise(r => setTimeout(r, 5000));
+
+              try {
+                  const audioData = await generateNarration(scene.narration, config.voiceName, activeApiKey);
+                  finalScenes.push({ ...scene, audioData });
+              } catch (e: any) {
+                  console.error(`TTS failed for scene: ${scene.id}`, e);
                   
-                  // Wait 65s to clear the minute-long penalty
-                  await new Promise(r => setTimeout(r, 65000));
-                  
-                  try {
-                      setStatus({ step: 'generating_audio', message: `Retrying scene ${i+1}...` });
-                      const retryAudio = await generateNarration(scene.narration, config.voiceName);
-                      finalScenes.push({ ...scene, audioData: retryAudio });
-                  } catch (retryError) {
-                      console.error("Retry failed:", retryError);
-                      finalScenes.push(scene); // Push without audio
+                  // Simple Retry Logic for Free Tier
+                  if (JSON.stringify(e).includes('429')) {
+                      setStatus({ step: 'generating_audio', message: `Rate limit hit. Retrying in 60s...` });
+                      await new Promise(r => setTimeout(r, 65000));
+                      try {
+                          const retryAudio = await generateNarration(scene.narration, config.voiceName, activeApiKey);
+                          finalScenes.push({ ...scene, audioData: retryAudio });
+                      } catch (retryError) {
+                          finalScenes.push(scene);
+                      }
+                  } else {
+                      finalScenes.push(scene);
                   }
-              } else {
-                  finalScenes.push(scene);
               }
           }
+          setScenes(finalScenes);
       }
 
-      setScenes(finalScenes);
       setStatus({ step: 'ready' });
       
       const newCount = generationsToday + 1;
@@ -256,7 +275,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
     } catch (error: any) {
       console.error("Generation Error:", error);
-      let errorMessage = 'Something went wrong.';
+      let errorMessage = 'Something went wrong. Please check your API keys or try again.';
       if (typeof error === 'object' && error !== null) {
           const errString = JSON.stringify(error) + (error.message || '');
           if (errString.includes('429') || errString.includes('RESOURCE_EXHAUSTED')) {
@@ -270,6 +289,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const handleRegenerateScene = async (sceneId: string) => {
     const sceneIndex = scenes.findIndex(s => s.id === sceneId);
     if (sceneIndex === -1) return;
+
+    // Use correct key for regeneration too
+    const activeApiKey = (isPro && process.env.API_KEY_PRO) ? process.env.API_KEY_PRO : undefined;
 
     const newScenes = [...scenes];
     newScenes[sceneIndex] = { ...newScenes[sceneIndex], isRegenerating: true };
@@ -322,11 +344,18 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             <button onClick={onBack} className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm font-medium">
                 <ArrowLeft className="w-4 h-4" /> Back to Home
             </button>
-            {!isPro && (
-                <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
-                    Daily Limit: <span className={generationsToday >= 5 ? 'text-red-500' : 'text-cyan-500'}>{generationsToday}</span>/5
-                </div>
-            )}
+            <div className="flex items-center gap-3">
+                {isPro && (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-yellow-400 bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">
+                        <Zap className="w-3 h-3" /> PRO MODE ACTIVE
+                    </div>
+                )}
+                {!isPro && (
+                    <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
+                        Daily Limit: <span className={generationsToday >= 5 ? 'text-red-500' : 'text-cyan-500'}>{generationsToday}</span>/5
+                    </div>
+                )}
+            </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0">

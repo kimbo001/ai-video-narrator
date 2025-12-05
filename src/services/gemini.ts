@@ -1,8 +1,16 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { Scene, VideoOrientation } from '../types';
 
-export const analyzeScript = async (script: string, globalTopic?: string): Promise<{ scenes: Scene[] }> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { Scene } from '../types';
+
+export const analyzeScript = async (script: string, globalTopic?: string, apiKey?: string): Promise<{ scenes: Scene[] }> => {
+  // Use provided specific key (Pro) OR fallback to default env key (Free)
+  const keyToUse = apiKey || process.env.API_KEY;
+  
+  if (!keyToUse) {
+    throw new Error("API Key is missing. Please check your configuration.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: keyToUse });
   
   const prompt = `
     You are a professional video director. Break down the following script into distinct visual scenes.
@@ -57,15 +65,20 @@ export const analyzeScript = async (script: string, globalTopic?: string): Promi
 
     return { scenes };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    // Throw the original error so the UI can detect 'leaked key' messages
-    throw error;
+    throw new Error("Failed to analyze script.");
   }
 };
 
-export const generateNarration = async (text: string, voiceName: string = 'Kore'): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export const generateNarration = async (text: string, voiceName: string = 'Kore', apiKey?: string): Promise<string> => {
+  const keyToUse = apiKey || process.env.API_KEY;
+
+  if (!keyToUse) {
+    throw new Error("API Key is missing");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: keyToUse });
 
   if (!text || !text.trim()) {
     throw new Error("Narration text is empty");
