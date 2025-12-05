@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    base: '/', // ← ADD THIS LINE (critical for Vercel)
     define: {
       'process.env.API_KEY': JSON.stringify(env.VITE_GOOGLE_API_KEY),
       'process.env.API_KEY_PRO': JSON.stringify(env.VITE_GOOGLE_API_KEY_PRO),
