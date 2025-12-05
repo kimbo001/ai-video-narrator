@@ -4,7 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Video Narrator</title>
+    
+    <!-- SEO Meta Tags -->
+    <title>AI Video Narrator | Text to Video Generator for YouTube & TikTok</title>
+    <meta name="description" content="Turn text into viral narrated videos instantly with our AI Video Generator. Auto-selects stock footage, generates professional voiceovers, and creates ready-to-upload content for YouTube Shorts, TikTok, and Reels.">
+    <meta name="keywords" content="AI Video Generator, Text to Video, Faceless YouTube Channel, AI Voiceover, Content Creation, AI Video Maker, Text to Speech Video">
+    <meta name="author" content="AI Video Narrator">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aivideonarrator.com/">
+    <meta property="og:title" content="AI Video Narrator - Create Viral Videos from Text">
+    <meta property="og:description" content="Generate faceless videos with AI narration and stock footage in seconds. No editing skills required.">
+    <meta property="og:image" content="https://aivideonarrator.com/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://aivideonarrator.com/">
+    <meta property="twitter:title" content="AI Video Narrator - Text to Video AI">
+    <meta property="twitter:description" content="Turn scripts into ready-to-post videos with AI. Try it for free.">
+    <meta property="twitter:image" content="https://aivideonarrator.com/og-image.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body {
@@ -12,17 +32,26 @@
         background-color: #09090b;
         color: #f4f4f5;
       }
-      .ken-burns {
-        animation: kenBurns 20s ease-out infinite alternate;
-      }
-      @keyframes kenBurns {
-        0% { transform: scale(1) translate(0, 0); }
-        100% { transform: scale(1.15) translate(-1%, -1%); }
-      }
     </style>
-  </head>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "@vercel/node": "https://aistudiocdn.com/@vercel/node@^5.5.15"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
