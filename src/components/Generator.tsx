@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -216,22 +217,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         })
       );
 
-      // --- BRANDING SCENE FOR FREE USERS ---
-      if (!isPro) {
-          const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
-          const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
-          
-          finalScenes.push({
-              id: 'branding-' + Date.now(),
-              narration: 'Made with AI Video Narrator. Create your own video today.',
-              visualSearchTerm: 'logo',
-              mediaType: 'image',
-              mediaUrl: `https://placehold.co/${width}x${height}/000000/FFF?text=Made+with+AI+Video+Narrator`,
-              audioData: await generateNarration('Made with AI Video Narrator.', config.voiceName),
-              duration: 3,
-              isBranding: true
-          } as Scene);
-      }
+      // Branding scene logic removed here
 
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
@@ -524,3 +510,4 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 };
 
 export default Generator;
+
