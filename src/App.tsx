@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import Generator from './components/Generator';
@@ -14,8 +13,16 @@ const App: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const pageParam = params.get('page');
     if (pageParam && ['home', 'generator', 'pricing', 'legal'].includes(pageParam)) {
-        setCurrentPage(pageParam as Page);
-    }
+        const target = pageParam as Page;
+        setCurrentPage(target);
+        // Optional: Update URL without reloading so users can copy/paste links
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('page', target);
+        window.history.pushState({}, '', newUrl);
+      } else {
+          console.warn(`Attempted to navigate to unknown page: ${pageParam}`);
+          setCurrentPage('home');
+      }
   }, []);
 
   // Helper to handle type-safe navigation and update URL
@@ -27,11 +34,11 @@ const App: React.FC = () => {
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.set('page', target);
           window.history.pushState({}, '', newUrl);
-      } else {
-          console.warn(`Attempted to navigate to unknown page: ${page}`);
-          setCurrentPage('home');
-      }
-  };
+        } else {
+            console.warn(`Attempted to navigate to unknown page: ${page}`);
+            setCurrentPage('home');
+        }
+    };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -40,7 +47,7 @@ const App: React.FC = () => {
       case 'generator':
         return <Generator onBack={() => handleNavigate('home')} />;
       case 'pricing':
-        return <Pricing onBack={() => handleNavigate('home')} onNavigate={handleNavigate} />;
+        return <Pricing onBack={() => handleNavigate('home')} />;
       case 'legal':
         return <Legal onBack={() => handleNavigate('home')} />;
       default:
