@@ -27,6 +27,13 @@ const App: React.FC = () => {
 
   // Helper to handle type-safe navigation and update URL
   const handleNavigate = (page: string) => {
+      // Handle static files first - check URL path, not page state
+      const pathname = window.location.pathname;
+      if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+          // Already on static file, don't navigate
+          return;
+      }
+      
       if (['home', 'generator', 'pricing', 'legal'].includes(page)) {
           const target = page as Page;
           setCurrentPage(target);
@@ -34,25 +41,33 @@ const App: React.FC = () => {
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.set('page', target);
           window.history.pushState({}, '', newUrl);
-        } else {
-            console.warn(`Attempted to navigate to unknown page: ${page}`);
-            setCurrentPage('home');
-        }
-    };
+      } else {
+          console.warn(`Attempted to navigate to unknown page: ${page}`);
+          setCurrentPage('home');
+      }
+  };
 
   const renderPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <LandingPage onStart={() => handleNavigate('generator')} onNavigate={handleNavigate} />;
-      case 'generator':
-        return <Generator onBack={() => handleNavigate('home')} />;
-      case 'pricing':
-        return <Pricing onBack={() => handleNavigate('home')} />;
-      case 'legal':
-        return <Legal onBack={() => handleNavigate('home')} />;
-      default:
-        return <LandingPage onStart={() => handleNavigate('generator')} onNavigate={handleNavigate} />;
-    }
+      // Check URL path for static files before checking page state - FIXED
+      const pathname = window.location.pathname;
+      if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+          // Let browser handle static files directly
+          return null;
+      }
+
+      // Your existing routing logic
+      switch (currentPage) {
+          case 'home':
+              return <LandingPage onStart={() => handleNavigate('generator')} onNavigate={handleNavigate} />;
+          case 'generator':
+              return <Generator onBack={() => handleNavigate('home')} />;
+          case 'pricing':
+              return <Pricing onBack={() => handleNavigate('home')} />;
+          case 'legal':
+              return <Legal onBack={() => handleNavigate('home')} />;
+          default:
+              return <LandingPage onStart={() => handleNavigate('generator')} onNavigate={handleNavigate} />;
+      }
   };
 
   return (
@@ -116,6 +131,9 @@ const App: React.FC = () => {
             <button onClick={() => handleNavigate('legal')} className="text-zinc-500 hover:text-zinc-300 text-sm">Privacy Policy</button>
             <button onClick={() => handleNavigate('legal')} className="text-zinc-500 hover:text-zinc-300 text-sm">Terms of Service</button>
             <button onClick={() => handleNavigate('legal')} className="text-zinc-500 hover:text-zinc-300 text-sm">Refund Policy</button>
+            {/* Add direct links for SEO */}
+            <a href="/robots.txt" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-zinc-300 text-sm">Robots.txt</a>
+            <a href="/sitemap.xml" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-zinc-300 text-sm">Sitemap</a>
           </div>
         </div>
       </footer>

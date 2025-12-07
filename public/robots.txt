@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://aivideonarrator.com/sitemap.xml
+
+# Block admin/cpanel access (security)
+Disallow: /admin/
+Disallow: /cpanel/
+Disallow: /private/
+
+# Block sensitive files
+Disallow: /package.json
+Disallow: /package-lock.json
+Disallow: /node_modules/
+
+# Allow specific file types
+Allow: *.js
+Allow: *.css
+Allow: *.png
+Allow: *.jpg
+Allow: *.jpeg
+Allow: *.gif
+Allow: *.svg
+Allow: *.webp
+
+# Crawl delay to be respectful
+Crawl-delay: 1
