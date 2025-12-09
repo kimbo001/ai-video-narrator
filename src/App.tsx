@@ -5,6 +5,9 @@ import Pricing from './components/Pricing';
 import Legal from './components/Legal';
 import { Page } from './types';
 
+// ←←← ADD THIS LINE
+import { Analytics } from '@vercel/analytics/react';
+
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
 
@@ -15,7 +18,6 @@ const App: React.FC = () => {
     if (pageParam && ['home', 'generator', 'pricing', 'legal'].includes(pageParam)) {
         const target = pageParam as Page;
         setCurrentPage(target);
-        // Optional: Update URL without reloading so users can copy/paste links
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.set('page', target);
         window.history.pushState({}, '', newUrl);
@@ -25,19 +27,15 @@ const App: React.FC = () => {
       }
   }, []);
 
-  // Helper to handle type-safe navigation and update URL
   const handleNavigate = (page: string) => {
-      // Handle static files first - check URL path, not page state
       const pathname = window.location.pathname;
       if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
-          // Already on static file, don't navigate
           return;
       }
       
       if (['home', 'generator', 'pricing', 'legal'].includes(page)) {
           const target = page as Page;
           setCurrentPage(target);
-          // Optional: Update URL without reloading so users can copy/paste links
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.set('page', target);
           window.history.pushState({}, '', newUrl);
@@ -48,14 +46,11 @@ const App: React.FC = () => {
   };
 
   const renderPage = () => {
-      // Check URL path for static files before checking page state - FIXED
       const pathname = window.location.pathname;
       if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
-          // Let browser handle static files directly
           return null;
       }
 
-      // Your existing routing logic
       switch (currentPage) {
           case 'home':
               return <LandingPage onStart={() => handleNavigate('generator')} onNavigate={handleNavigate} />;
@@ -75,41 +70,19 @@ const App: React.FC = () => {
       {/* Navbar */}
       <nav className="border-b border-zinc-800 bg-[#0b0e14]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          
-          {/* Logo */}
           <button onClick={() => handleNavigate('home')} className="flex items-center gap-2 group">
             <img src="/logo.png" alt="AI Video Narrator" className="w-8 h-8 object-contain transition-transform group-hover:scale-105" />
             <span className="font-bold text-white text-lg tracking-tight">AI Video Narrator</span>
           </button>
 
-          {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-8">
-            <button 
-              onClick={() => handleNavigate('home')} 
-              className={`text-sm font-medium transition-colors ${currentPage === 'home' ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
-            >
-              Home
-            </button>
-            <button 
-              onClick={() => handleNavigate('pricing')} 
-              className={`text-sm font-medium transition-colors ${currentPage === 'pricing' ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
-            >
-              Pricing
-            </button>
-            <button 
-              onClick={() => handleNavigate('legal')} 
-              className={`text-sm font-medium transition-colors ${currentPage === 'legal' ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
-            >
-              Terms & Privacy
-            </button>
+            <button onClick={() => handleNavigate('home')} className={`text-sm font-medium transition-colors ${currentPage === 'home' ? 'text-white' : 'text-zinc-400 hover:text-white'}`}>Home</button>
+            <button onClick={() => handleNavigate('pricing')} className={`text-sm font-medium transition-colors ${currentPage === 'pricing' ? 'text-white' : 'text-zinc-400 hover:text-white'}`}>Pricing</button>
+            <button onClick={() => handleNavigate('legal')} className={`text-sm font-medium transition-colors ${currentPage === 'legal' ? 'text-white' : 'text-zinc-400 hover:text-white'}`}>Terms & Privacy</button>
           </div>
 
-          {/* CTA */}
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => handleNavigate('generator')}
-              className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors"
-            >
+            <button onClick={() => handleNavigate('generator')} className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
               App Dashboard
             </button>
           </div>
@@ -121,17 +94,17 @@ const App: React.FC = () => {
         {renderPage()}
       </main>
 
+      {/* ←←← VERCEL ANALYTICS – THIS IS THE ONLY NEW LINE */}
+      <Analytics />
+
       {/* Footer */}
       <footer className="border-t border-zinc-800 bg-[#0b0e14] py-12 mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-zinc-500 text-sm">
-            © {new Date().getFullYear()} AI Video Narrator. All rights reserved.
-          </p>
+          <p className="text-zinc-500 text-sm">© {new Date().getFullYear()} AI Video Narrator. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <button onClick={() => handleNavigate('legal')} className="text-zinc-500 hover:text-zinc-300 text-sm">Privacy Policy</button>
             <button onClick={() => handleNavigate('legal')} className="text-zinc-500 hover:text-zinc-300 text-sm">Terms of Service</button>
             <button onClick={() => handleNavigate('legal')} className="text-zinc-500 hover:text-zinc-300 text-sm">Refund Policy</button>
-            {/* Add direct links for SEO */}
             <a href="/robots.txt" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-zinc-300 text-sm">Robots.txt</a>
             <a href="/sitemap.xml" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-zinc-300 text-sm">Sitemap</a>
           </div>
