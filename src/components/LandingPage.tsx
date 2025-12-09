@@ -23,9 +23,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
-            The Ultimate <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">AI Text-to-Video</span> Generator
-          </h1>
+  Ultimate AI Short <br />
+  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Creator and Narrator</span>
+</h1>
           
           <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             Create professional, narrated videos for <strong>TikTok, YouTube Shorts, and Reels</strong> in seconds. 
