@@ -2,6 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { inject } from "@vercel/analytics";
+
+// Initialize Vercel Web Analytics
+inject();
 
 // FULL PROFESSIONAL SEO — invisible to users
 document.title = "AI Video Narrator: Free Text to Viral Video Generator | TikTok & Reels";
