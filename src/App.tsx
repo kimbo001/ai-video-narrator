@@ -5,11 +5,16 @@ import Pricing from './components/Pricing';
 import Legal from './components/Legal';
 import { Page } from './types';
 
-// ←←← ADD THIS LINE
+// ←←← NEW: These two lines only
 import { Analytics } from '@vercel/analytics/react';
+import useBeatmap from './hooks/useBeatmap';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
+
+  // ←←← NEW: Story Weaver state + hook
+  const [useStoryWeaver, setUseStoryWeaver] = useState(false);
+  const { beatmap, loading, generate } = useBeatmap();
 
   // Handle initial deep linking from URL (e.g. ?page=legal)
   useEffect(() => {
@@ -55,7 +60,16 @@ const App: React.FC = () => {
           case 'home':
               return <LandingPage onStart={() => handleNavigate('generator')} onNavigate={handleNavigate} />;
           case 'generator':
-              return <Generator onBack={() => handleNavigate('home')} />;
+              return (
+                <Generator 
+                  onBack={() => handleNavigate('home')}
+                  useStoryWeaver={useStoryWeaver}
+                  setUseStoryWeaver={setUseStoryWeaver}
+                  storyWeaverBeatmap={beatmap}
+                  storyWeaverLoading={loading}
+                  storyWeaverGenerate={generate}
+                />
+              );
           case 'pricing':
               return <Pricing onBack={() => handleNavigate('home')} />;
           case 'legal':
@@ -94,7 +108,6 @@ const App: React.FC = () => {
         {renderPage()}
       </main>
 
-      {/* ←←← VERCEL ANALYTICS – THIS IS THE ONLY NEW LINE */}
       <Analytics />
 
       {/* Footer */}
