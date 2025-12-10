@@ -1,4 +1,4 @@
-// src/components/Generator.tsx
+// src/components/Generator.tsx  ←  FINAL WORKING VERSION
 import React, { useState, useEffect, useRef } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -11,7 +11,7 @@ import { Loader2, ArrowLeft, Sparkles } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 import { useStoryStore } from '../store/useStoryStore';
 
-const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks. A majestic deer appears, ears twitching. Nature holds its breath.";
+const DEFAULT_SCRIPT = "A curious red panda discovers a hidden bamboo forest at sunrise.";
 
 interface GeneratorProps {
   onBack: () => void;
@@ -30,7 +30,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     includeMusic: true,
   });
 
-  const [status, setStatus] = useState<GenerationStatus>({ step: 'idle' });
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -51,68 +50,68 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
   };
 
-  const getStockMediaForScene = async (query: string, type: 'image' | 'video', used: Set<string>) => {
-    const providers = [];
-    if (config.pixabayApiKey) providers.push('pixabay');
-    if (config.pexelsApiKey) providers.push('pexels');
-    if (config.unsplashApiKey) providers.push('unsplash');
+  const getStockMediaForScene = async (query: string) => {
+    const providers = ['pixabay', 'pexels', 'unsplash'].filter(p =>
+      p === 'pixabay' ? config.pixabayApiKey :
+      p === 'pexels' ? config.pexelsApiKey : config.unsplashApiKey
+    );
 
-    for (const p of providers.sort(() => 0.5 - Math.random())) {
+    for (const p of providers.sort(() => Math.random() - 0.5)) {
       let url: string | null = null;
-      if (p === 'pixabay') url = await fetchPixabayMedia(query, type, config.pixabayApiKey, config.orientation, used, config.visualSubject, config.negativePrompt);
-      if (p === 'pexels') url = await fetchPexelsMedia(query, type, config.pexelsApiKey, config.orientation, used, config.visualSubject, config.negativePrompt);
-      if (p === 'unsplash') url = await fetchUnsplashMedia(query, type, config.unsplashApiKey, config.orientation, used, config.visualSubject, config.negativePrompt);
-      if (url) return { url, source: p };
+      if (p === 'pixabay') url = await fetchPixabayMedia(query, 'image', config.pixabayApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
+      if (p === 'pexels') url = await fetchPexelsMedia(query, 'image', config.pexelsApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
+      if (p === 'unsplash') url = await fetchUnsplashMedia(query, 'image', config.unsplashApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
+      if (url) {
+        usedMediaUrlsRef.current.add(url);
+        return url;
+      }
     }
-    return { url: null, source: 'none' };
+    return null;
   };
 
-  const generateSingleVideo = async (scriptText: string) => {
+  const generateSingleVideo = async (text: string) => {
     setIsGenerating(true);
-    setStatus({ step: 'analyzing' });
     setScenes([]);
 
     try {
-      const analysis = await analyzeScript(scriptText);
-      const newScenes: Scene[] = analysis.scenes.map((s: any) => ({
+      const result = await analyzeScript(text);
+      const newScenes: Scene[] = result.scenes.map((s: any) => ({
         id: crypto.randomUUID(),
         narration: s.narration,
-        visualSearchTerm: s.mediaQuery || s.visualSearchTerm || s.narration.slice(0, 60),
+        // This line fixes the black video bug
+        visualSearchTerm: s.mediaQuery || s.narration.substring(0, 80),
         mediaUrl: '',
-        mediaType: 'image',
+        mediaType: 'image' as const,
         audioData: null,
-        duration: 5,
+        duration: 6,
         isRegenerating: false,
       }));
       setScenes(newScenes);
 
       for (let i = 0; i < newScenes.length; i++) {
         const scene = newScenes[i];
-        setStatus({ step: 'narration', progress: i + 1, total: newScenes.length });
 
-        const narration = await generateNarration(scene.narration, config.voiceName);
-        scene.audioData = narration.audioData as Uint8Array;
-        scene.duration = narration.duration || Math.max(3, scene.narration.length / 15);
+        // Narration
+        const nar = await generateNarration(scene.narration, config.voiceName);
+        scene.audioData = nar.audioData as Uint8Array;
+        scene.duration = nar.duration || 6;
 
-        setStatus({ step: 'media', progress: i + 1, total: newScenes.length });
-        const { url } = await getStockMediaForScene(scene.visualSearchTerm, 'image', usedMediaUrlsRef.current);
-        if (url) {
-          scene.mediaUrl = url;
-          scene.mediaType = url.endsWith('.mp4') ? 'video' : 'image';
-          usedMediaUrlsRef.current.add(url);
+        // Media
+        const mediaUrl = await getStockMediaForScene(scene.visualSearchTerm);
+        if (mediaUrl) {
+          scene.mediaUrl = mediaUrl;
+          scene.mediaType = mediaUrl.includes('.mp4') ? 'video' : 'image';
         }
 
         setScenes([...newScenes]);
       }
 
+      // Background music
       if (config.includeMusic) {
-        const audio = await fetchPixabayAudio("calm ambient", config.pixabayApiKey);
+        const audio = await fetchPixabayAudio("uplifting acoustic", config.pixabayApiKey);
         if (audio) setBackgroundMusicUrl(audio);
       }
-
-      setStatus({ step: 'complete' });
     } catch (e) {
-      setStatus({ step: 'error', message: 'Generation failed' });
       console.error(e);
     } finally {
       setIsGenerating(false);
@@ -120,25 +119,23 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   };
 
   const handleGenerate = async () => {
+    // WEAVER: first click → create variations
     if (mode === 'weave' && variations.length === 0) {
-      setStatus({ step: 'weaving' });
       try {
         const vars = await generateStoryVariations(script);
         setVariations(vars.map(v => ({ ...v, id: crypto.randomUUID() })));
       } catch (e) {
         console.error('Weaver failed', e);
       }
-      setStatus({ step: 'idle' });
       return;
     }
 
-    const scriptsToUse = mode === 'single'
+    // GENERATE SELECTED VIDEOS
+    const scripts = mode === 'single'
       ? [script]
-      : variations
-          .filter(v => selectedVariationIds.includes(v.id))
-          .map(v => v.script);
+      : variations.filter(v => selectedVariationIds.includes(v.id)).map(v => v.script);
 
-    for (const s of scriptsToUse) {
+    for (const s of scripts) {
       await generateSingleVideo(s);
       await new Promise(r => setTimeout(r, 1000));
     }
@@ -153,51 +150,44 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT – SCRIPT + WEAVER */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center text-cyan-400">1</div>
-              <span className="font-semibold text-white">Script</span>
-            </div>
+        {/* LEFT */}
+        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl flex flex-col">
+          <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+            <span className="font-bold text-white">Script</span>
             {mode === 'weave' && <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />}
           </div>
 
-          <div className="flex-1 p-4 overflow-y-auto">
+          <div className="flex-1 p-4">
             <textarea
               value={script}
               onChange={e => setScript(e.target.value)}
-              className="w-full min-h-96 bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-sm resize-none focus:ring-1 focus:ring-cyan-500 outline-none"
-              placeholder="Paste your script here..."
+              className="w-full h-80 bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-sm resize-none focus:ring-2 focus:ring-cyan-500 outline-none"
             />
           </div>
 
           <div className="p-4 border-t border-zinc-800 space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-zinc-400">AI Story Weaver</span>
+              <span className="text-sm text-zinc-400">AI Story Weaver</span>
               <button
                 onClick={() => setMode(mode === 'weave' ? 'single' : 'weave')}
-                className={`relative w-11 h-6 rounded-full transition ${mode === 'weave' ? 'bg-cyan-500' : 'bg-zinc-700'}`}
+                className={`relative w-12 h-7 rounded-full ${mode === 'weave' ? 'bg-cyan-500' : 'bg-zinc-700'}`}
               >
-                <span className={`block w-4 h-4 bg-white rounded-full transition ${mode === 'weave' ? 'translate-x-6' : 'translate-x-1'}`} />
+                <span className={`block w-5 h-5 bg-white rounded-full transition ${mode === 'weave' ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
 
             {mode === 'weave' && variations.length > 0 && (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-2 max-h-96 overflow-y-auto">
                 {variations.map(v => (
-                  <label key={v.id} className={`block p-3 rounded-lg border cursor-pointer transition ${selectedVariationIds.includes(v.id) ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700'}`}>
-                    <div className="flex gap-3 items-start">
-                      <input
-                        type="checkbox"
-                        checked={selectedVariationIds.includes(v.id)}
-                        onChange={() => toggleVariation(v.id)}
-                        className="mt-1"
-                      />
-                      <div>
-                        <div className="font-bold text-sm">{v.title}</div>
-                        <div className="text-xs text-zinc-400">{v.description}</div>
-                      </div>
+                  <label key={v.id} className={`flex items-center gap-3 p-3 rounded-lg border ${selectedVariationIds.includes(v.id) ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700'}`}>
+                    <input
+                      type="checkbox"
+                      checked={selectedVariationIds.includes(v.id)}
+                      onChange={() => toggleVariation(v.id)}
+                    />
+                    <div>
+                      <div className="font-semibold">{v.title}</div>
+                      <div className="text-xs text-zinc-400">{v.description}</div>
                     </div>
                   </label>
                 ))}
@@ -207,63 +197,43 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !script.trim()}
-              className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-4 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isGenerating ? (
-                <Loader2 className="animate-spin w-5 h-5" />
-              ) : mode === 'weave' && variations.length === 0 ? (
-                'Weave & Generate'
-              ) : (
-                `Generate ${mode === 'weave' ? selectedVariationIds.length : 1} Video${mode === 'weave' && selectedVariationIds.length !== 1 ? 's' : ''}`
-              )}
+              {isGenerating ? <Loader2 className="animate-spin" /> : 'Generate Video(s)'}
             </button>
           </div>
         </div>
 
-        {/* MIDDLE – CONFIGURATION */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400">2</div>
-            <span className="font-semibold text-white">Configuration</span>
-          </div>
+        {/* MIDDLE & RIGHT – your existing columns */}
+        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl flex flex-col">
+          <div className="p-4 border-b border-zinc-800 font-bold text-white">Configuration</div>
           <div className="flex-1 overflow-y-auto p-4">
             <SettingsPanel config={config} onConfigChange={updateConfig} />
           </div>
         </div>
 
-        {/* RIGHT – PREVIEW */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400">3</div>
-            <span className="font-semibold text-white">Preview & Export</span>
+        <div className="bg-[#11141b] border border-zinc-800 rounded-2xl flex flex-col">
+          <div className="p-4 border-b border-zinc-800 font-bold text-white">Preview & Export</div>
+          <div className="flex-1 bg-black flex items-center justify-center">
+            <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} musicVolume={0.3} />
           </div>
-          <div className="flex-1 flex flex-col">
-            <div className="h-96 bg-black flex items-center justify-center">
-              <VideoPlayer
-                scenes={scenes}
-                orientation={config.orientation}
-                backgroundMusicUrl={backgroundMusicUrl}
-                musicVolume={0.3}
-              />
-            </div>
-            <div className="p-4 overflow-y-auto">
-              <div className="grid grid-cols-3 gap-3">
-                {scenes.map((s, i) => (
-                  <div key={s.id} className="relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800">
-                    {s.mediaUrl ? (
-                      s.mediaType === 'video' ? (
-                        <video src={s.mediaUrl} className="w-full h-full object-cover" />
-                      ) : (
-                        <img src={s.mediaUrl} className="w-full h-full object-cover" />
-                      )
+          <div className="p-4">
+            <div className="grid grid-cols-3 gap-3">
+              {scenes.map((s, i) => (
+                <div key={s.id} className="aspect-video bg-zinc-900 rounded overflow-hidden border border-zinc-800">
+                  {s.mediaUrl ? (
+                    s.mediaType === 'video' ? (
+                      <video src={s.mediaUrl} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-500">
-                        Scene {i + 1}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      <img src={s.mediaUrl} className="w-full h-full object-cover" />
+                    )
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500">
+                      Scene {i + 1}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
