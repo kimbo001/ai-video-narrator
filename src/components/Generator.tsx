@@ -16,21 +16,9 @@ const DEFAULT_UNSPLASH_KEY = "inICXEimMWagCfHA86bD4k9MprjkgEFmG0bW9UREKo";
 
 interface GeneratorProps {
   onBack: () => void;
-  useStoryWeaver: boolean;
-  setUseStoryWeaver: (value: boolean) => void;
-  storyWeaverBeatmap: any;
-  storyWeaverLoading: boolean;
-  storyWeaverGenerate: (script: string) => void;
 }
 
-const Generator: React.FC<GeneratorProps> = ({ 
-  onBack, 
-  useStoryWeaver, 
-  setUseStoryWeaver, 
-  storyWeaverBeatmap, 
-  storyWeaverLoading, 
-  storyWeaverGenerate 
-}) => {
+const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [config, setConfig] = useState<AppConfig & { includeMusic: boolean }>({
     pixabayApiKey: DEFAULT_PIXABAY_KEY,
@@ -67,6 +55,7 @@ const Generator: React.FC<GeneratorProps> = ({
       const lastResetTimestamp = usage.lastResetTimestamp || 0;
       const hoursSinceReset = (nowTimestamp - lastResetTimestamp) / (1000 * 60 * 60);
       
+      // Reset if more than 24 hours have passed
       if (hoursSinceReset >= 24) {
         setGenerationsToday(0);
         localStorage.setItem('app_usage', JSON.stringify({ 
@@ -77,6 +66,7 @@ const Generator: React.FC<GeneratorProps> = ({
         setGenerationsToday(usage.count || 0);
       }
     } else {
+      // First time user
       setGenerationsToday(0);
       localStorage.setItem('app_usage', JSON.stringify({ 
         lastResetTimestamp: nowTimestamp, 
@@ -84,13 +74,6 @@ const Generator: React.FC<GeneratorProps> = ({
       }));
     }
   }, []);
-
-  // Auto-run Story Weaver when toggle is ON and script exists
-  useEffect(() => {
-    if (useStoryWeaver && script.trim() && !storyWeaverBeatmap && !storyWeaverLoading) {
-      storyWeaverGenerate(script);
-    }
-  }, [useStoryWeaver, script, storyWeaverBeatmap, storyWeaverLoading, storyWeaverGenerate]);
 
   const updateConfig = (newConfig: AppConfig) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
@@ -150,9 +133,14 @@ const Generator: React.FC<GeneratorProps> = ({
   };
 
   const handleGenerate = async () => {
+    // Check 5/day limit for free users
     if (!isPro && generationsToday >= 5) {
       alert("Daily limit reached (5/5). Please upgrade to Lifetime for unlimited videos!");
       return;
+    }
+
+    if (!process.env.API_KEY) {
+      console.warn("API_KEY is likely missing from environment variables.");
     }
 
     try {
@@ -224,6 +212,7 @@ const Generator: React.FC<GeneratorProps> = ({
         scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
       }
 
+      // Parallel Audio Generation (Fast for Everyone)
       setStatus({ step: 'generating_audio', message: `Narrating scenes...` });
       
       const finalScenes = await Promise.all(
@@ -241,6 +230,7 @@ const Generator: React.FC<GeneratorProps> = ({
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
       
+      // FIXED: Update generation counter with timestamp
       const newCount = generationsToday + 1;
       setGenerationsToday(newCount);
       const now = new Date();
@@ -323,26 +313,6 @@ const Generator: React.FC<GeneratorProps> = ({
             Daily Limit: <span className={generationsToday >= 5 ? 'text-red-500' : 'text-cyan-500'}>{generationsToday}</span>/5
           </div>
         )}
-      </div>
-
-      {/* ←←← STORY WEAVER TOGGLE (only new thing) */}
-      <div className="mb-6 flex items-center gap-4 justify-center">
-        <button
-          type="button"
-          onClick={() => setUseStoryWeaver(!useStoryWeaver)}
-          className={`relative inline-flex h-9 w-16 rounded-full transition ${useStoryWeaver ? 'bg-purple-600' : 'bg-zinc-700'}`}
-        >
-          <span className={`inline-block h-7 w-7 transform rounded-full bg-white transition ${useStoryWeaver ? 'translate-x-9' : 'translate-x-1'}`} />
-        </button>
-        <div className="text-sm font-medium">
-          <span className={useStoryWeaver ? 'text-purple-400' : 'text-zinc-500'}>
-            Story Weaver {useStoryWeaver ? 'ON' : 'OFF'}
-          </span>
-          {storyWeaverLoading && <span className="ml-2 text-purple-400">Directing…</span>}
-          {useStoryWeaver && storyWeaverBeatmap && (
-            <span className="ml-2 text-green-400">Ready ({storyWeaverBeatmap.emotion?.length} beats)</span>
-          )}
-        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0">
