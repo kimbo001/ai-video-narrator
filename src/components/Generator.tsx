@@ -7,11 +7,11 @@ import { generateStoryVariations } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, RefreshCw, ArrowLeft, Sparkles } from 'lucide-react';
+import { Loader2, ArrowLeft, Sparkles } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 import { useStoryStore } from '../store/useStoryStore';
 
-const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks. majestic deer appears, ears twitching. Nature holds its breath.";
+const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks. A majestic deer appears, ears twitching. Nature holds its breath.";
 
 interface GeneratorProps {
   onBack: () => void;
@@ -67,17 +67,17 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     return { url: null, source: 'none' };
   };
 
-  const generateSingleVideo = async (text: string) => {
+  const generateSingleVideo = async (scriptText: string) => {
     setIsGenerating(true);
     setStatus({ step: 'analyzing' });
     setScenes([]);
 
     try {
-      const analysis = await analyzeScript(text);
+      const analysis = await analyzeScript(scriptText);
       const newScenes: Scene[] = analysis.scenes.map((s: any) => ({
         id: crypto.randomUUID(),
         narration: s.narration,
-        visualSearchTerm: s.mediaQuery || '',
+        visualSearchTerm: s.mediaQuery || s.visualSearchTerm || s.narration.slice(0, 60),
         mediaUrl: '',
         mediaType: 'image',
         audioData: null,
@@ -106,13 +106,14 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       }
 
       if (config.includeMusic) {
-        const audio = await fetchPixabayAudio("background", config.pixabayApiKey);
+        const audio = await fetchPixabayAudio("calm ambient", config.pixabayApiKey);
         if (audio) setBackgroundMusicUrl(audio);
       }
 
       setStatus({ step: 'complete' });
     } catch (e) {
-      setStatus({ step: 'error', message: 'Failed' });
+      setStatus({ step: 'error', message: 'Generation failed' });
+      console.error(e);
     } finally {
       setIsGenerating(false);
     }
@@ -121,19 +122,25 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const handleGenerate = async () => {
     if (mode === 'weave' && variations.length === 0) {
       setStatus({ step: 'weaving' });
-      const vars = await generateStoryVariations(script);
-      setVariations(vars.map(v => ({ ...v, id: crypto.randomUUID() })));
+      try {
+        const vars = await generateStoryVariations(script);
+        setVariations(vars.map(v => ({ ...v, id: crypto.randomUUID() })));
+      } catch (e) {
+        console.error('Weaver failed', e);
+      }
       setStatus({ step: 'idle' });
       return;
     }
 
-    const scripts = mode === 'single'
+    const scriptsToUse = mode === 'single'
       ? [script]
-      : variations.filter(v => selectedVariationIds.includes(v.id)).map(v => v.script);
+      : variations
+          .filter(v => selectedVariationIds.includes(v.id))
+          .map(v => v.script);
 
-    for (const s of scripts) {
+    for (const s of scriptsToUse) {
       await generateSingleVideo(s);
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 1000));
     }
 
     reset();
@@ -146,7 +153,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT – SCRIPT + STORY WEAVER */}
+        {/* LEFT – SCRIPT + WEAVER */}
         <div className="bg-[#11141b] border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
           <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -170,7 +177,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
               <span className="text-xs text-zinc-400">AI Story Weaver</span>
               <button
                 onClick={() => setMode(mode === 'weave' ? 'single' : 'weave')}
-                className={`relative w-11 h-6 rounded-full ${mode === 'weave' ? 'bg-cyan-500' : 'bg-zinc-700'}`}
+                className={`relative w-11 h-6 rounded-full transition ${mode === 'weave' ? 'bg-cyan-500' : 'bg-zinc-700'}`}
               >
                 <span className={`block w-4 h-4 bg-white rounded-full transition ${mode === 'weave' ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
@@ -179,9 +186,14 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             {mode === 'weave' && variations.length > 0 && (
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {variations.map(v => (
-                  <label key={v.id} className={`block p-3 rounded-lg border cursor-pointer ${selectedVariationIds.includes(v.id) ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700'}`}>
-                    <div className="flex gap-3">
-                      <input type="checkbox" checked={selectedVariationIds.includes(v.id)} onChange={() => toggleVariation(v.id)} />
+                  <label key={v.id} className={`block p-3 rounded-lg border cursor-pointer transition ${selectedVariationIds.includes(v.id) ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700'}`}>
+                    <div className="flex gap-3 items-start">
+                      <input
+                        type="checkbox"
+                        checked={selectedVariationIds.includes(v.id)}
+                        onChange={() => toggleVariation(v.id)}
+                        className="mt-1"
+                      />
                       <div>
                         <div className="font-bold text-sm">{v.title}</div>
                         <div className="text-xs text-zinc-400">{v.description}</div>
@@ -197,12 +209,18 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
               disabled={isGenerating || !script.trim()}
               className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {isGenerating ? <Loader2 className="animate-spin" /> : mode === 'weave' && variations.length === 0 ? 'Weave & Generate' : 'Generate Video(s)'}
+              {isGenerating ? (
+                <Loader2 className="animate-spin w-5 h-5" />
+              ) : mode === 'weave' && variations.length === 0 ? (
+                'Weave & Generate'
+              ) : (
+                `Generate ${mode === 'weave' ? selectedVariationIds.length : 1} Video${mode === 'weave' && selectedVariationIds.length !== 1 ? 's' : ''}`
+              )}
             </button>
           </div>
         </div>
 
-        {/* MIDDLE – SETTINGS */}
+        {/* MIDDLE – CONFIGURATION */}
         <div className="bg-[#11141b] border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
           <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400">2</div>
@@ -219,8 +237,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400">3</div>
             <span className="font-semibold text-white">Preview & Export</span>
           </div>
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="h-96 bg-black border-b border-zinc-800 flex items-center justify-center">
+          <div className="flex-1 flex flex-col">
+            <div className="h-96 bg-black flex items-center justify-center">
               <VideoPlayer
                 scenes={scenes}
                 orientation={config.orientation}
@@ -231,18 +249,18 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             <div className="p-4 overflow-y-auto">
               <div className="grid grid-cols-3 gap-3">
                 {scenes.map((s, i) => (
-                  <div key={s.id} className="relative group aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800">
-                    {s.mediaUrl && (
-                      s.mediaType === 'video' ?
-                        <video src={s.mediaUrl} className="w-full h-full object-cover" /> :
+                  <div key={s.id} className="relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800">
+                    {s.mediaUrl ? (
+                      s.mediaType === 'video' ? (
+                        <video src={s.mediaUrl} className="w-full h-full object-cover" />
+                      ) : (
                         <img src={s.mediaUrl} className="w-full h-full object-cover" />
+                      )
+                    ) : (
+                      <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-500">
+                        Scene {i + 1}
+                      </div>
                     )}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                      <button className="p-2 bg-black/60 rounded-full">
-                        <RefreshCw className="w-4 h-4 text-white" />
-                      </button>
-                    </div>
-                    <div className="absolute bottom-1 left-1 text-xs text-white bg-black/60 px-1 rounded">Scene {i + 1}</div>
                   </div>
                 ))}
               </div>
