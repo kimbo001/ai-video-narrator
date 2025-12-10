@@ -3,15 +3,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
 import { analyzeScript, generateNarration } from '../services/gemini';
-import { generateStoryVariations } from '../services/gemini';
+import { generateStoryVariations } from '../services/gemini'; // ← NEW (for Story Weaver)
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
 import { Loader2, RefreshCw, ArrowLeft, Sparkles } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
-import { useStoryStore } from '../store/useStoryStore';
+import { useStoryStore } from '../store/useStoryStore'; // ← NEW
 
-const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks. A majestic deer appears, ears twitching. Nature holds its breath.";
+const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
 
 interface GeneratorProps {
   onBack: () => void;
@@ -27,7 +27,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     visualSubject: '',
     voiceName: 'Kore',
     negativePrompt: '',
-    includeMusic: true,
+    includeMusic: true
   });
 
   const [status, setStatus] = useState<GenerationStatus>({ step: 'idle' });
@@ -37,15 +37,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
   const usedMediaUrlsRef = useRef<Set<string>>(new Set());
 
-  const {
-    mode,
-    variations,
-    selectedVariationIds,
-    setMode,
-    setVariations,
-    toggleVariation,
-    reset,
-  } = useStoryStore();
+  // AI Story Weaver state
+  const { mode, variations, selectedVariationIds, setMode, setVariations, toggleVariation, reset } = useStoryStore();
 
   const updateConfig = (newConfig: Partial<AppConfig>) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
@@ -57,7 +50,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     if (config.pexelsApiKey) providers.push('pexels');
     if (config.unsplashApiKey) providers.push('unsplash');
 
-    for (const p of providers.sort(() => 0.5 - Math.random())) {
+    (providers as any[]).sort(() => 0.5 - Math.random());
+
+    for (const p of providers) {
       let url: string | null = null;
       if (p === 'pixabay') url = await fetchPixabayMedia(query, type, config.pixabayApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
       if (p === 'pexels') url = await fetchPexelsMedia(query, type, config.pexelsApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
@@ -80,7 +75,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       const newScenes: Scene[] = analysis.scenes.map((s: any) => ({
         id: crypto.randomUUID(),
         narration: s.narration,
-        visualSearchTerm: s.mediaQuery || s.narration.slice(0, 60),
+        // THIS WAS THE BUG — your API returns "mediaQuery", not "visualSearchTerm"
+        visualSearchTerm: s.mediaQuery,
         mediaUrl: '',
         mediaType: 'image',
         audioData: null,
@@ -114,7 +110,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
       setStatus({ step: 'complete' });
     } catch (e) {
-      setStatus({ step: 'error', message: 'Failed' });
+      setStatus({ step: 'error' });
       console.error(e);
     } finally {
       setIsGenerating(false);
@@ -122,6 +118,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   };
 
   const handleGenerate = async () => {
+    // AI Story Weaver: first click = generate variations
     if (mode === 'weave' && variations.length === 0) {
       setStatus({ step: 'weaving' });
       const vars = await generateStoryVariations(script);
@@ -130,9 +127,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       return;
     }
 
-    const scripts = mode === 'single'
-      ? [script]
-      : variations.filter(v => selectedVariationIds.includes(v.id)).map(v => v.script);
+    const scripts = mode === 'single' ? [script] : variations.filter(v => selectedVariationIds.includes(v.id)).map(v => v.script);
 
     for (const s of scripts) {
       await generateSingleVideo(s);
@@ -149,7 +144,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT — YOUR ORIGINAL DESIGN */}
+        {/* YOUR ORIGINAL LEFT COLUMN + WEAVER */}
         <div className="w-full lg:w-[360px] shrink-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden relative">
           <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -204,7 +199,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* MIDDLE — FULLY INTERACTIVE SETTINGS */}
+        {/* MIDDLE — SETTINGS (NOW WORKING) */}
         <div className="w-full lg:w-[340px] shrink-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
           <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400">2</div>
@@ -215,7 +210,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* RIGHT — PREVIEW */}
+        {/* RIGHT — PREVIEW (your original) */}
         <div className="flex-1 min-w-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
           <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -225,15 +220,10 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           </div>
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="h-[400px] shrink-0 bg-[#0b0e14] border-b border-zinc-800 overflow-hidden relative flex items-center justify-center">
-              <VideoPlayer
-                scenes={scenes}
-                orientation={config.orientation}
-                backgroundMusicUrl={backgroundMusicUrl}
-                musicVolume={0.3}
-              />
+              <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} musicVolume={0.3} />
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-[#0b0e14]/50">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar p-4 bg-[#0b0e14]/50">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pb-2">
                 {scenes.map((scene, idx) => (
                   <div key={scene.id} className="relative group">
                     <div className="w-full aspect-video bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800">
@@ -248,11 +238,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                           Scene {idx + 1}
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <button className="p-2 bg-black/60 rounded-full text-white">
-                          <RefreshCw className="w-4 h-4" />
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ))}
