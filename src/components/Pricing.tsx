@@ -4,7 +4,7 @@ import { Page } from '../types';
 
 interface PricingProps {
   onBack: () => void;
-  onNavigate: (page: Page) => void;
+  // REMOVED: onNavigate: (page: Page) => void;  // This was causing the TS error
 }
 
 const Pricing: React.FC<PricingProps> = ({ onBack }) => {
@@ -116,13 +116,33 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
                         {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activate'}
                     </button>
                   </div>
+
+                  {/* GUMROAD BUTTON – PERFECTLY PLACED & STYLED */}
+                  <div className="mt-8 text-center">
+                    <p className="text-zinc-400 text-sm mb-4">
+                      Don't have a license key yet?
+                    </p>
+                    <a
+                      href="https://kimbosaurus.gumroad.com/l/AIVideoNarrator "
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold py-4 px-10 rounded-2xl shadow-xl shadow-cyan-500/40 transition-all transform hover:scale-105"
+                    >
+                      Get Lifetime License Key – $99 (one-time)
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                    <p className="text-xs text-zinc-500 mt-3">Instant delivery • Lifetime access • No subscriptions</p>
+                  </div>
+                  {/* END OF GUMROAD BUTTON */}
               </div>
           )}
           {activationMsg && <p className={`text-xs mt-3 ${activationMsg.includes('Invalid') || activationMsg.includes('error') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
       </div>
 
+      {/* Pricing Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        
         {/* Free Plan */}
         <div className={`bg-[#11141b] border ${isPro ? 'border-zinc-800 opacity-50' : 'border-zinc-700'} rounded-2xl p-8 flex flex-col`}>
           <div className="mb-4">
@@ -188,7 +208,7 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
               </button>
           ) : (
               <button 
-                onClick={() => window.open('https://kimbosaurus.gumroad.com/l/AIVideoNarrator', '_blank')} 
+                onClick={() => window.open('https://kimbosaurus.gumroad.com/l/AIVideoNarrator ', '_blank')} 
                 className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
               >
                 Buy on Gumroad
@@ -196,7 +216,6 @@ const Pricing: React.FC<PricingProps> = ({ onBack }) => {
           )}
           {!isPro && <p className="text-center text-xs text-zinc-500 mt-3">Receive license key instantly via email</p>}
         </div>
-
       </div>
     </div>
   );

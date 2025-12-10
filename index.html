@@ -2,27 +2,45 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Video Narrator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #09090b;
-        color: #f4f4f5;
-      }
-      .ken-burns {
-        animation: kenBurns 20s ease-out infinite alternate;
-      }
-      @keyframes kenBurns {
-        0% { transform: scale(1) translate(0, 0); }
-        100% { transform: scale(1.15) translate(-1%, -1%); }
-      }
-    </style>
+
+    <!-- ==================== GOOGLE ANALYTICS (GA4) ==================== -->
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6XGDCZZDX8"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-6XGDCZZDX8');
+    </script>
+    <!-- End Google tag -->
+
+    <!-- ==================== SEO & SOCIAL FIXES ==================== -->
+    <title>AI Video Narrator: Ultimate AI Short Creator and Narrator for TikTok & Reels</title>
+    <meta name="description" content="Create viral TikTok, Reels & YouTube videos from text in seconds. Free AI narrator, professional voiceovers, captions, stock footage & music. No face needed.">
+
+    <link rel="canonical" href="https://aivideonarrator.com/" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Discord, WhatsApp, etc.) -->
+    <meta property="og:title" content="AI Video Narrator – Ultimate AI Short Creator and Narrator " />
+    <meta property="og:description" content="Turn any text into fully narrated viral videos in seconds. Free & unlimited." />
+    <meta property="og:image" content="https://aivideonarrator.com/og-image.jpg" />
+    <meta property="og:url" content="https://aivideonarrator.com/" />
+    <meta property="og:type" content="website" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AI Video Narrator – Ultimate AI Short Creator and Narrator " />
+    <meta name="twitter:description" content="Turn any text into fully narrated viral videos in seconds. Free & unlimited." />
+    <meta name="twitter:image" content="https://aivideonarrator.com/og-image.jpg" />
+
+    <!-- ==================== END OF SEO FIXES ==================== -->
+
+    <!-- Vite injects CSS/JS automatically -->
+    <script type="module" src="/src/index.tsx"></script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
