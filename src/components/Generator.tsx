@@ -1,15 +1,28 @@
-// src/components/Generator.tsx — FINAL PERFECT VERSION
-import React, { useState } from 'react';
-import { AppConfig, VideoOrientation, Scene } from '../types';
+// src/components/Generator.tsx — YOUR ORIGINAL CODE, ONLY FIXED
+import React, { useState, useEffect, useRef } from 'react';
+import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
-import { Loader2, ArrowLeft, Sparkles } from 'lucide-react';
+import { analyzeScript, generateNarration } from '../services/gemini';
+import { generateStoryVariations } from '../services/gemini';
+import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
+import { fetchPexelsMedia } from '../services/pexels';
+import { fetchUnsplashMedia } from '../services/unsplash';
+import { Loader2, RefreshCw, ArrowLeft, Sparkles } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 import { useStoryStore } from '../store/useStoryStore';
 
-const Generator: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [script, setScript] = useState("A golden retriever puppy chases butterflies in a sunny meadow at golden hour.");
+const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks. A majestic deer appears, ears twitching. Nature holds its breath.";
 
-  const [config, setConfig] = useState<Partial<AppConfig> & { includeMusic: boolean}>({
+interface GeneratorProps {
+  onBack: () => void;
+}
+
+const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
+  const [script, setScript] = useState(DEFAULT_SCRIPT);
+  const [config, setConfig] = useState<AppConfig & { includeMusic: boolean }>({
+    pixabayApiKey: "21014376-3347c14254556d44ac7acb25e",
+    pexelsApiKey: "2BboNbFvEGwKENV4lhRTyQwu3txrXFsistvTjNlrqYYtwXjACy9PmwkoM",
+    unsplashApiKey: "inICXEimMWagCfHA86bD4k9MprjkgEFmG0bW9UREKo",
     orientation: VideoOrientation.Portrait,
     visualSubject: '',
     voiceName: 'Kore',
@@ -17,151 +30,233 @@ const Generator: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     includeMusic: true,
   });
 
+  const [status, setStatus] = useState<GenerationStatus>({ step: 'idle' });
   const [scenes, setScenes] = useState<Scene[]>([]);
+  const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const { mode, variations, selectedVariationIds, setMode, setVariations, toggleVariation, reset } = useStoryStore();
+  const usedMediaUrlsRef = useRef<Set<string>>(new Set());
 
-  // These will NEVER fail — direct CDN links
-  const FALLBACK_IMAGES = [
-    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&auto=format",
-    "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format",
-    "https://images.pexels.com/photos/358457/pexels-photo-358457.jpeg?w=800",
-    "https://images.pexels.com/photos/709552/pexels-photo-709552.jpeg?w=800",
-    "https://images.unsplash.com/photo-1519904981063-b0a8a6e9b8a9?w=800&auto=format",
-    "https://images.pexels.com/photos/4666752/pexels-photo-4666752.jpeg?w=800",
-  ];
+  const {
+    mode,
+    variations,
+    selectedVariationIds,
+    setMode,
+    setVariations,
+    toggleVariation,
+    reset,
+  } = useStoryStore();
 
-  const generateDemoVideo = () => {
-    const lines = script.split(/[.!?]+/).filter(Boolean).slice(0, 8);
-    const demoScenes: Scene[] = lines.map((line, i) => ({
-      id: String(i),
-      narration: line.trim() + (i < lines.length - 1 ? '.' : ''),
-      visualSearchTerm: line.trim(),
-      mediaUrl: FALLBACK_IMAGES[i % FALLBACK_IMAGES.length],
-      mediaType: 'image',
-      audioData: new Uint8Array(24000 * 2 * 5), // 5 sec silence so VideoPlayer works
-      duration: 5,
-      isRegenerating: false,
-    }));
-    setScenes(demoScenes);
+  const updateConfig = (newConfig: Partial<AppConfig>) => {
+    setConfig(prev => ({ ...prev, ...newConfig }));
   };
 
-  const handleGenerate = () => {
+  const getStockMediaForScene = async (query: string, type: 'image' | 'video') => {
+    const providers = [];
+    if (config.pixabayApiKey) providers.push('pixabay');
+    if (config.pexelsApiKey) providers.push('pexels');
+    if (config.unsplashApiKey) providers.push('unsplash');
+
+    for (const p of providers.sort(() => 0.5 - Math.random())) {
+      let url: string | null = null;
+      if (p === 'pixabay') url = await fetchPixabayMedia(query, type, config.pixabayApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
+      if (p === 'pexels') url = await fetchPexelsMedia(query, type, config.pexelsApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
+      if (p === 'unsplash') url = await fetchUnsplashMedia(query, type, config.unsplashApiKey, config.orientation, usedMediaUrlsRef.current, config.visualSubject, config.negativePrompt);
+      if (url) {
+        usedMediaUrlsRef.current.add(url);
+        return url;
+      }
+    }
+    return null;
+  };
+
+  const generateSingleVideo = async (text: string) => {
+    setIsGenerating(true);
+    setStatus({ step: 'analyzing' });
+    setScenes([]);
+
+    try {
+      const analysis = await analyzeScript(text);
+      const newScenes: Scene[] = analysis.scenes.map((s: any) => ({
+        id: crypto.randomUUID(),
+        narration: s.narration,
+        visualSearchTerm: s.mediaQuery || s.narration.slice(0, 60),
+        mediaUrl: '',
+        mediaType: 'image',
+        audioData: null,
+        duration: 5,
+        isRegenerating: false,
+      }));
+      setScenes(newScenes);
+
+      for (let i = 0; i < newScenes.length; i++) {
+        const scene = newScenes[i];
+        setStatus({ step: 'narration', progress: i + 1, total: newScenes.length });
+
+        const narration = await generateNarration(scene.narration, config.voiceName);
+        scene.audioData = narration.audioData as Uint8Array;
+        scene.duration = narration.duration || 6;
+
+        setStatus({ step: 'media', progress: i + 1, total: newScenes.length });
+        const url = await getStockMediaForScene(scene.visualSearchTerm, 'image');
+        if (url) {
+          scene.mediaUrl = url;
+          scene.mediaType = url.includes('.mp4') ? 'video' : 'image';
+        }
+
+        setScenes([...newScenes]);
+      }
+
+      if (config.includeMusic) {
+        const audio = await fetchPixabayAudio("calm", config.pixabayApiKey);
+        if (audio) setBackgroundMusicUrl(audio);
+      }
+
+      setStatus({ step: 'complete' });
+    } catch (e) {
+      setStatus({ step: 'error', message: 'Failed' });
+      console.error(e);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerate = async () => {
     if (mode === 'weave' && variations.length === 0) {
-      setVariations([
-        { id: 'v1', title: "Wholesome & Happy", description: "Pure joy and sunshine", script, mood: "wholesome" },
-        { id: 'v2', title: "Epic Cinematic", description: "Dramatic slow-motion", script, mood: "epic" },
-        { id: 'v3', title: "Funny Meme Style", description: "Maximum chaos energy", script, mood: "funny" },
-        { id: 'v4', title: "Mysterious Night", description: "Dark and atmospheric", script, mood: "mysterious" },
-      ]);
+      setStatus({ step: 'weaving' });
+      const vars = await generateStoryVariations(script);
+      setVariations(vars.map(v => ({ ...v, id: crypto.randomUUID() })));
+      setStatus({ step: 'idle' });
       return;
     }
 
-    setIsGenerating(true);
-    generateDemoVideo();
-    setTimeout(() => setIsGenerating(false), 1500);
+    const scripts = mode === 'single'
+      ? [script]
+      : variations.filter(v => selectedVariationIds.includes(v.id)).map(v => v.script);
+
+    for (const s of scripts) {
+      await generateSingleVideo(s);
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    reset();
   };
 
   return (
     <div className="max-w-screen-2xl mx-auto p-6">
-      <button onClick={onBack} className="flex items-center gap-2 text-zinc-400 hover:text-white mb-8 text-lg">
-        <ArrowLeft className="w-5 h-5" /> Back
+      <button onClick={onBack} className="flex items-center gap-2 text-zinc-400 hover:text-white mb-8">
+        <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* ==================== LEFT: SCRIPT + WEAVER ==================== */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-3xl p-8 flex flex-col gap-8 shadow-2xl">
-          <div className="flex justify-between items-center">
-            <h2 className="text-3xl font-bold text-white">Script</h2>
-            {mode === 'weave' && <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" />}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT — YOUR ORIGINAL DESIGN */}
+        <div className="w-full lg:w-[360px] shrink-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden relative">
+          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center text-cyan-400">1</div>
+              <h2 className="text-white font-semibold text-sm">Story Script</h2>
+            </div>
+            {mode === 'weave' && <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />}
           </div>
 
-          <textarea
-            value={script}
-            onChange={(e) => setScript(e.target.value)}
-            className="w-full h-80 bg-[#0b0e14] border border-zinc-800 rounded-2xl p-6 text-white text-lg resize-none focus:ring-4 focus:ring-cyan-500/50 outline-none transition-all"
-            placeholder="Write your story here..."
-          />
+          <div className="flex-1 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pb-32">
+            <textarea
+              value={script}
+              onChange={(e) => setScript(e.target.value)}
+              maxLength={1000}
+              className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 outline-none resize-none mb-2 min-h-[200px]"
+              placeholder="Enter your story script here..."
+            />
+          </div>
 
-          <div className="flex justify-between items-center">
-            <span className="text-lg text-zinc-300 font-medium">AI Story Weaver</span>
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#11141b]/95 backdrop-blur-md border-t border-zinc-800 z-10 space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-zinc-400">AI Story Weaver</span>
+              <button
+                onClick={() => setMode(mode === 'weave' ? 'single' : 'weave')}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${mode === 'weave' ? 'bg-cyan-500' : 'bg-zinc-700'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${mode === 'weave' ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {mode === 'weave' && variations.length > 0 && (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {variations.map(v => (
+                  <label key={v.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${selectedVariationIds.includes(v.id) ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700'}`}>
+                    <input type="checkbox" checked={selectedVariationIds.includes(v.id)} onChange={() => toggleVariation(v.id)} />
+                    <div>
+                      <div className="font-medium text-white">{v.title}</div>
+                      <div className="text-xs text-zinc-400">{v.description}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
             <button
-              onClick={() => setMode(mode === 'weave' ? 'single' : 'weave')}
-              className={`relative w-16 h-9 rounded-full transition-all duration-300 ${mode === 'weave' ? 'bg-gradient-to-r from-cyan-500 to-blue-600' : 'bg-zinc-700'}`}
+              onClick={handleGenerate}
+              disabled={isGenerating || !script.trim()}
+              className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-3 rounded-xl transition-all active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-3"
             >
-              <span className={`absolute top-1.5 w-7 h-7 bg-white rounded-full transition-all duration-300 shadow-lg ${mode === 'weave' ? 'translate-x-8' : 'translate-x-1'}`} />
+              {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Generate Video'}
             </button>
           </div>
-
-          {mode === 'weave' && variations.length > 0 && (
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {variations.map((v) => (
-                <label
-                  key={v.id}
-                  className={`flex items-center gap-5 p-5 rounded-2xl border-2 cursor-pointer transition-all ${
-                    selectedVariationIds.includes(v.id)
-                      ? 'border-cyan-500 bg-cyan-500/20 shadow-lg shadow-cyan-500/20'
-                      : 'border-zinc-700 hover:border-zinc-600'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedVariationIds.includes(v.id)}
-                    onChange={() => toggleVariation(v.id)}
-                    className="w-6 h-6 text-cyan-500 rounded focus:ring-cyan-500"
-                  />
-                  <div className="flex-1">
-                    <div className="text-xl font-bold text-white">{v.title}</div>
-                    <div className="text-sm text-zinc-400 mt-1">{v.description}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black text-xl font-bold py-6 rounded-2xl shadow-xl transform transition-all active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-4"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-7 h-7 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                Generate Video{mode === 'weave' && selectedVariationIds.length > 1 ? 's' : ''}
-              </>
-            )}
-          </button>
         </div>
 
-        {/* ==================== MIDDLE: CONFIGURATION ==================== */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-3xl p-8 shadow-2xl">
-          <h2 className="text-3xl font-bold text-white mb-8 text-center">Configuration</h2>
-          <SettingsPanel
-            config={config as AppConfig}
-            onConfigChange={(newConfig) => {
-              setConfig((prev) => ({ ...prev, ...newConfig }));
-            }}
-          />
-        </div>
-
-        {/* ==================== RIGHT: PREVIEW ==================== */}
-        <div className="bg-[#11141b] border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-          <div className="p-8 border-b border-zinc-800">
-            <h2 className="text-3xl font-bold text-white text-center">Preview & Export</h2>
+        {/* MIDDLE — FULLY INTERACTIVE SETTINGS */}
+        <div className="w-full lg:w-[340px] shrink-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
+          <div className="p-4 border-b border-zinc-800 flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400">2</div>
+            <h2 className="text-white font-semibold text-sm">Configuration</h2>
           </div>
-          <div className="flex-1 bg-black flex items-center justify-center p-8">
-            <div className="w-full max-w-2xl">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+            <SettingsPanel config={config} onConfigChange={updateConfig} />
+          </div>
+        </div>
+
+        {/* RIGHT — PREVIEW */}
+        <div className="flex-1 min-w-0 flex flex-col h-full bg-[#11141b] border border-zinc-800 rounded-2xl shadow-lg overflow-hidden">
+          <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400">3</div>
+              <h2 className="text-white font-semibold text-sm">Preview & Export</h2>
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="h-[400px] shrink-0 bg-[#0b0e14] border-b border-zinc-800 overflow-hidden relative flex items-center justify-center">
               <VideoPlayer
                 scenes={scenes}
-                orientation={config.orientation || VideoOrientation.Portrait}
-                backgroundMusicUrl={null}
+                orientation={config.orientation}
+                backgroundMusicUrl={backgroundMusicUrl}
                 musicVolume={0.3}
               />
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-[#0b0e14]/50">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {scenes.map((scene, idx) => (
+                  <div key={scene.id} className="relative group">
+                    <div className="w-full aspect-video bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800">
+                      {scene.mediaUrl ? (
+                        scene.mediaType === 'video' ? (
+                          <video src={scene.mediaUrl} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={scene.mediaUrl} className="w-full h-full object-cover" />
+                        )
+                      ) : (
+                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-500">
+                          Scene {idx + 1}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <button className="p-2 bg-black/60 rounded-full text-white">
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
