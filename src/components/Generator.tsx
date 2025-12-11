@@ -8,6 +8,7 @@ import { fetchUnsplashMedia } from '../services/unsplash';
 import { Loader2, Wand2, RefreshCw, Upload, FileAudio, Volume2, ArrowLeft } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 import { pcm16ToWav } from '../utils/audio';
+import { useSearchParams } from 'react-router-dom';   // ← ADDED
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
 const DEFAULT_PIXABAY_KEY = "21014376-3347c14254556d44ac7acb25e";
@@ -19,6 +20,7 @@ interface GeneratorProps {
 }
 
 const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
+  const [searchParams] = useSearchParams();                      // ← ADDED
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [config, setConfig] = useState<AppConfig & { includeMusic: boolean }>({
     pixabayApiKey: DEFAULT_PIXABAY_KEY,
@@ -55,7 +57,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       const lastResetTimestamp = usage.lastResetTimestamp || 0;
       const hoursSinceReset = (nowTimestamp - lastResetTimestamp) / (1000 * 60 * 60);
       
-      // Reset if more than 24 hours have passed
       if (hoursSinceReset >= 24) {
         setGenerationsToday(0);
         localStorage.setItem('app_usage', JSON.stringify({ 
@@ -66,7 +67,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         setGenerationsToday(usage.count || 0);
       }
     } else {
-      // First time user
       setGenerationsToday(0);
       localStorage.setItem('app_usage', JSON.stringify({ 
         lastResetTimestamp: nowTimestamp, 
@@ -74,6 +74,16 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       }));
     }
   }, []);
+
+  /* =====  NEW: auto-fill from Chrome extension  ===== */
+  useEffect(() => {
+    const prefill = searchParams.get('script');
+    if (prefill) {
+      const decoded = decodeURIComponent(prefill).replace(/\+/g, ' ');
+      setScript(decoded);
+    }
+  }, [searchParams]);
+  /* =================================================== */
 
   const updateConfig = (newConfig: AppConfig) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
@@ -133,7 +143,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   };
 
   const handleGenerate = async () => {
-    // Check 5/day limit for free users
     if (!isPro && generationsToday >= 5) {
       alert("Daily limit reached (5/5). Please upgrade to Lifetime for unlimited videos!");
       return;
@@ -212,7 +221,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
       }
 
-      // Parallel Audio Generation (Fast for Everyone)
       setStatus({ step: 'generating_audio', message: `Narrating scenes...` });
       
       const finalScenes = await Promise.all(
@@ -230,7 +238,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
       
-      // FIXED: Update generation counter with timestamp
       const newCount = generationsToday + 1;
       setGenerationsToday(newCount);
       const now = new Date();
