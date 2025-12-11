@@ -52,24 +52,39 @@ root.render(
   </React.StrictMode>
 );
 
-/* =====  Chrome-extension deep-link (NEW)  ===== */
+/* =====  Chrome-extension deep-link (mutation-observer version)  ===== */
 function fillScriptFromExtension() {
   const params = new URLSearchParams(window.location.search);
-  const script = params.get("script");
+  const script = params.get('script');
   if (!script) return;
 
-  let ticks = 0;
-  const timer = setInterval(() => {
-    const el = document.querySelector('textarea[name="script"], #script-box, [data-input="script"]') as HTMLTextAreaElement | null;
+  const targetSelector = 'textarea[name="script"], #script-box, [data-input="script"]';
+
+  // if it’s already here, fill immediately
+  const el = document.querySelector(targetSelector) as HTMLTextAreaElement | null;
+  if (el) {
+    el.value = decodeURIComponent(script).replace(/\+/g, ' ');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.scrollIntoView({ behaviour: 'smooth', block: 'center' });
+    return;
+  }
+
+  // otherwise watch until it appears
+  const observer = new MutationObserver(() => {
+    const el = document.querySelector(targetSelector) as HTMLTextAreaElement | null;
     if (el) {
-      el.value = decodeURIComponent(script).replace(/\+/g, " ");
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      clearInterval(timer);
-    } else if (++ticks > 20) {          // 6 s max
-      clearInterval(timer);
+      el.value = decodeURIComponent(script).replace(/\+/g, ' ');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.scrollIntoView({ behaviour: 'smooth', block: 'center' });
+      observer.disconnect();          // job done
     }
-  }, 300);
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // safety: stop watching after 8 s
+  setTimeout(() => observer.disconnect(), 8000);
 }
-// run after React paints
-setTimeout(fillScriptFromExtension, 500);
+
+// run on every navigation (including client-side React Router changes)
+fillScriptFromExtension();
