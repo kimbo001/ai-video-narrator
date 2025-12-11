@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Sparkles, Zap, Star, Monitor, Smartphone, Youtube, Video } from 'lucide-react';
 import { Page } from '../types';
 
@@ -8,6 +9,8 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="flex flex-col min-h-full">
       {/* Hero Section */}
@@ -34,13 +37,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button 
-  onClick={() => window.history.pushState({}, '', '/generator')}
-  className="px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all flex items-center gap-2 transform hover:scale-105 active:scale-95"
-  aria-label="Start generating video for free"
->
-  <Play className="w-5 h-5 fill-current" />
-  Start Creating (Free)
-</button>
+              onClick={() => navigate('/generator')}
+              className="px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all flex items-center gap-2 transform hover:scale-105 active:scale-95"
+              aria-label="Start generating video for free"
+            >
+              <Play className="w-5 h-5 fill-current" />
+              Start Creating (Free)
+            </button>
             <button 
               onClick={() => onNavigate('pricing')}
               className="px-8 py-4 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-lg rounded-xl border border-zinc-700 transition-all flex items-center gap-2"
