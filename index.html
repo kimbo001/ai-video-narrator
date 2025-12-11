@@ -38,25 +38,6 @@
 
   <body>
     <div id="root"></div>
-
-    <!-- Auto-fill script from Chrome extension -->
-    <script>
-      (() => {
-        const params = new URLSearchParams(location.search);
-        const script = params.get('script');
-        if (script) {
-          const tryFill = setInterval(() => {
-            const el = document.querySelector('textarea[name="script"], #script-box, [data-input="script"]');
-            if (el) {
-              el.value = decodeURIComponent(script).replace(/\+/g, ' ');
-              el.dispatchEvent(new Event('input', { bubbles: true }));
-              clearInterval(tryFill);
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }, 200);
-          setTimeout(() => clearInterval(tryFill), 5000);
-        }
-      })();
-    </script>
+    <!-- NO inline script here any more -->
   </body>
 </html>
