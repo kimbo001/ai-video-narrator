@@ -53,6 +53,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
               Get Pro (Unlimited)
             </button>
           </div>
+
+          {/* NEW LIFETIME DEAL BUTTON */}
+          <a
+            href="https://kimbosaurus.gumroad.com/l/AIVideoNarrator"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-extrabold text-base rounded-xl shadow-lg hover:shadow-orange-400/40 transition-all flex items-center gap-2 transform hover:scale-105"
+          >
+            <Zap className="w-5 h-5" />
+            Lifetime Pro Key – $45 (special)
+          </a>
           
           <div className="mt-8 flex items-center justify-center gap-6 text-sm text-zinc-500">
             <span className="flex items-center gap-1"><Youtube className="w-4 h-4" /> YouTube Ready</span>
