@@ -258,7 +258,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           let mediaType = scene.mediaType || 'image';
           if (scene._file) {
             const mutedBlob = await muteVideo(scene._file);
-            mediaUrl = URL.createObjectURL(mutedBlob);
+            mediaUrl = URL.createObjectURL(mutedBlob); // <<< FIX: give player a real url
             mediaType = scene._file.type.startsWith('video') ? 'video' : 'image';
           }
           if (!mediaUrl) {
