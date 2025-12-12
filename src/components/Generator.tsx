@@ -130,7 +130,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       visualSearchTerm: '',
       mediaType: file.type.startsWith('video') ? 'video' : 'image',
       mediaUrl: URL.createObjectURL(file),
-      _file: file, // keep raw file for later mute
+      _file: file,
     }));
     setScenes(prev => [...prev, ...newScenes]);
   };
@@ -157,10 +157,20 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       setStatus({ step: 'analyzing', message: 'Analyzing script...' });
 
       const segments = script.split('---').map(s => s.trim()).filter(Boolean);
+
+      /* NEW: keep uploaded files while rebuilding scenes */
+      const existing = scenes.reduce((map, s) => {
+        if (s._file) map.set(s.visualSearchTerm, s._file);
+        return map;
+      }, new Map<string, File>());
+
       const rawScenes: Scene[] = [];
       for (const seg of segments) {
-        const { scenes } = await analyzeScript(seg, config.visualSubject);
-        rawScenes.push({ ...scenes[0], id: `scene-${Date.now()}-${Math.random().toString(36).slice(2)}` });
+        const { scenes: geminiScenes } = await analyzeScript(seg, config.visualSubject);
+        const sc = geminiScenes[0];
+        sc.id = `scene-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        sc._file = existing.get(sc.visualSearchTerm);   // remove "?? null"
+        rawScenes.push(sc);
       }
 
       if (config.includeMusic) {
@@ -182,7 +192,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           let mediaUrl = scene.mediaUrl;
           let mediaType = scene.mediaType || 'image';
           if (scene._file) {
-            // user uploaded → mute & use
             const mutedBlob = await muteVideo(scene._file);
             mediaUrl = URL.createObjectURL(mutedBlob);
             mediaType = scene._file.type.startsWith('video') ? 'video' : 'image';
@@ -237,7 +246,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           finalScenes.push({ ...scene, audioData });
         } catch (e) {
           console.error(`TTS failed for scene: ${scene.id}`, e);
-          finalScenes.push(scene); // keep scene even if TTS fails
+          finalScenes.push(scene);
         }
       }
       setScenes(finalScenes);
