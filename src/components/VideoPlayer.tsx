@@ -7,14 +7,14 @@ interface VideoPlayerProps {
   scenes: Scene[];
   orientation: VideoOrientation;
   backgroundMusicUrl?: string | null;
-  musicVolume?: number; // Added prop
+  musicVolume?: number; 
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
   scenes, 
   orientation, 
   backgroundMusicUrl, 
-  musicVolume = 0.15 // Default volume
+  musicVolume = 0.15 
 }) => {
   // --- STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
@@ -57,10 +57,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     stateRef.current.showCaptions = showCaptions;
   }, [currentSceneIndex, isPlaying, isExporting, orientation, showCaptions]);
 
-  // Update Music Volume Dynamically
+  // Update Music Volume
   useEffect(() => {
     if (bgMusicGainRef.current) {
-        // Smooth transition to new volume
         const currentTime = audioContextRef.current?.currentTime || 0;
         bgMusicGainRef.current.gain.cancelScheduledValues(currentTime);
         bgMusicGainRef.current.gain.setValueAtTime(bgMusicGainRef.current.gain.value, currentTime);
@@ -150,8 +149,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             if (scene.mediaType === 'video') {
                 const vid = document.createElement('video');
                 
-                // CRITICAL FIX: Only apply crossOrigin for remote URLs. 
-                // Local blobs fail if this is set.
+                // Only apply crossOrigin for remote URLs. Local blobs fail with this set.
                 if (scene.mediaUrl.startsWith('http')) {
                   vid.crossOrigin = "anonymous";
                 }
@@ -161,17 +159,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 vid.loop = true;
                 vid.playsInline = true;
                 vid.preload = 'auto'; 
-                vid.style.display = 'none';
+                vid.style.display = 'none'; // Mount hidden
                 
                 if (videoContainerRef.current) videoContainerRef.current.appendChild(vid);
+                
+                // Force load for local blobs to ensure they are ready
+                vid.load();
 
                 await new Promise((resolve) => {
-                    vid.onloadedmetadata = () => resolve(true);
+                    const onReady = () => resolve(true);
+                    
+                    vid.onloadedmetadata = onReady;
+                    vid.onloadeddata = onReady;
+                    vid.oncanplay = onReady;
+                    
                     vid.onerror = (e) => {
                         console.warn(`Video load failed for ${scene.mediaUrl}`, e);
                         resolve(null);
                     };
-                    setTimeout(() => resolve(null), 5000);
+                    
+                    // Slightly shorter timeout to not block UI forever
+                    setTimeout(() => resolve(null), 3000);
                 });
                 videos[scene.id] = vid;
             } else {
@@ -223,7 +231,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     bgMusicSourceRef.current = source;
                     bgMusicGainRef.current = gain;
                 } catch(e) {
-                    console.warn("Audio routing error:", e);
+                    // Suppress error if source already connected (React Hot Reload issue)
                 }
             }
         } else {
@@ -245,7 +253,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         if (narrationSourceRef.current) try { narrationSourceRef.current.stop(); } catch(e) {}
         if (bgMusicElementRef.current) bgMusicElementRef.current.pause();
     };
-  }, [scenes, backgroundMusicUrl]); // musicVolume is excluded here to avoid reloading assets on volume change
+  }, [scenes, backgroundMusicUrl]);
 
   // --- PLAYBACK HELPERS ---
   const stopSceneMedia = useCallback(() => {
@@ -270,7 +278,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
         vid.currentTime = 0;
-        vid.play().catch(e => console.warn("Video play failed (likely intentional interruption):", e));
+        vid.play().catch(e => console.warn("Video play failed (interrupted):", e));
     }
 
     // Play Narration
@@ -320,7 +328,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
-        if (vid.readyState >= 2 || (vid.readyState >= 1 && vid.currentTime > 0)) {
+        
+        // Relaxed check: readyState >= 1 ensures we have metadata/first frame.
+        // We do NOT wait for readyState 4 for local blobs as it can be flaky.
+        if (vid.readyState >= 1) {
              const scale = Math.max(canvas.width / vid.videoWidth, canvas.height / vid.videoHeight);
              const x = (canvas.width - vid.videoWidth * scale) / 2;
              const y = (canvas.height - vid.videoHeight * scale) / 2;
