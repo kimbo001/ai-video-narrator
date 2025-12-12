@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Scene, VideoOrientation } from '../types';
 import { Play, Pause, SkipBack, SkipForward, Loader2, Download, AlertCircle, Captions, CaptionsOff, RefreshCw } from 'lucide-react';
@@ -8,10 +7,15 @@ interface VideoPlayerProps {
   scenes: Scene[];
   orientation: VideoOrientation;
   backgroundMusicUrl?: string | null;
-  musicVolume?: number;
+  musicVolume?: number; 
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgroundMusicUrl, musicVolume = 0.3 }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
+  scenes, 
+  orientation, 
+  backgroundMusicUrl, 
+  musicVolume = 0.15 
+}) => {
   // --- STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
@@ -29,6 +33,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
   // Audio Sources
   const narrationSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const bgMusicElementRef = useRef<HTMLAudioElement | null>(null);
+  const bgMusicSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const bgMusicGainRef = useRef<GainNode | null>(null);
   
   const requestRef = useRef<number>(0);
@@ -54,11 +59,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
 
   // Update Music Volume
   useEffect(() => {
-      if (bgMusicGainRef.current) {
-          // Smooth transition for volume changes
-          const now = audioContextRef.current?.currentTime || 0;
-          bgMusicGainRef.current.gain.setTargetAtTime(musicVolume, now, 0.1);
-      }
+    if (bgMusicGainRef.current) {
+        const currentTime = audioContextRef.current?.currentTime || 0;
+        bgMusicGainRef.current.gain.cancelScheduledValues(currentTime);
+        bgMusicGainRef.current.gain.setValueAtTime(bgMusicGainRef.current.gain.value, currentTime);
+        bgMusicGainRef.current.gain.linearRampToValueAtTime(musicVolume, currentTime + 0.1);
+    }
   }, [musicVolume]);
 
   // Assets
@@ -84,9 +90,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
 
     // Reset state
     setIsPlaying(false);
-    setCurrentSceneIndex(0);
-    stateRef.current.isPlaying = false;
-    stateRef.current.sceneStartTimestamp = 0; 
+    if (currentSceneIndex >= scenes.length) {
+        setCurrentSceneIndex(0);
+        stateRef.current.sceneStartTimestamp = 0;
+    } else {
+        stateRef.current.isPlaying = false;
+        stateRef.current.sceneStartTimestamp = 0; 
+    }
 
     if (scenes.length === 0) {
       setIsReady(false);
@@ -138,27 +148,52 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
           if (scene.mediaUrl) {
             if (scene.mediaType === 'video') {
                 const vid = document.createElement('video');
+                
+                // Only apply crossOrigin for remote URLs. Local blobs fail with this set.
+                if (scene.mediaUrl.startsWith('http')) {
+                  vid.crossOrigin = "anonymous";
+                }
+                
                 vid.src = scene.mediaUrl;
-                vid.crossOrigin = "anonymous";
                 vid.muted = true;
                 vid.loop = true;
                 vid.playsInline = true;
                 vid.preload = 'auto'; 
-                vid.style.display = 'none';
+                vid.style.display = 'none'; // Mount hidden
+                
                 if (videoContainerRef.current) videoContainerRef.current.appendChild(vid);
+                
+                // Force load for local blobs to ensure they are ready
+                vid.load();
 
                 await new Promise((resolve) => {
-                    vid.onloadeddata = resolve;
-                    vid.onerror = () => resolve(null);
+                    const onReady = () => resolve(true);
+                    
+                    vid.onloadedmetadata = onReady;
+                    vid.onloadeddata = onReady;
+                    vid.oncanplay = onReady;
+                    
+                    vid.onerror = (e) => {
+                        console.warn(`Video load failed for ${scene.mediaUrl}`, e);
+                        resolve(null);
+                    };
+                    
+                    // Slightly shorter timeout to not block UI forever
+                    setTimeout(() => resolve(null), 3000);
                 });
                 videos[scene.id] = vid;
             } else {
                 const img = new Image();
-                img.crossOrigin = "anonymous";
+                if (scene.mediaUrl.startsWith('http')) {
+                  img.crossOrigin = "anonymous";
+                }
                 img.src = scene.mediaUrl;
                 await new Promise((resolve) => {
                     img.onload = resolve;
-                    img.onerror = () => resolve(null);
+                    img.onerror = () => {
+                        console.warn(`Image load failed: ${scene.mediaUrl}`);
+                        resolve(null);
+                    };
                 });
                 images[scene.id] = img;
             }
@@ -170,7 +205,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         // --- LOAD BACKGROUND MUSIC ---
         if (backgroundMusicUrl) {
             const audio = new Audio();
-            audio.crossOrigin = 'anonymous';
+            if (backgroundMusicUrl.startsWith('http')) {
+                audio.crossOrigin = 'anonymous';
+            }
             audio.src = backgroundMusicUrl;
             audio.loop = true;
             bgMusicElementRef.current = audio;
@@ -187,12 +224,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
                 try {
                     const source = audioContextRef.current.createMediaElementSource(audio);
                     const gain = audioContextRef.current.createGain();
-                    gain.gain.value = musicVolume; 
+                    gain.gain.value = musicVolume; // Use prop volume
                     source.connect(gain);
                     gain.connect(audioContextRef.current.destination);
+                    
+                    bgMusicSourceRef.current = source;
                     bgMusicGainRef.current = gain;
                 } catch(e) {
-                    console.warn("Audio routing error:", e);
+                    // Suppress error if source already connected (React Hot Reload issue)
                 }
             }
         } else {
@@ -239,7 +278,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
         vid.currentTime = 0;
-        vid.play().catch(e => console.warn("Video play failed:", e));
+        vid.play().catch(e => console.warn("Video play failed (interrupted):", e));
     }
 
     // Play Narration
@@ -283,28 +322,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
     const duration = scene.duration || 3;
     const progress = Math.min(elapsedTime / duration, 1);
 
-    // --- SMOOTH CROSS FADE OPACITY ---
-    // Fade IN (0->1) over first 0.5s, Fade OUT (1->0) over last 0.5s
-    const fadeDuration = 0.5;
-    let alpha = 1;
-    if (elapsedTime < fadeDuration) {
-        alpha = elapsedTime / fadeDuration;
-    } else if (elapsedTime > duration - fadeDuration) {
-        alpha = (duration - elapsedTime) / fadeDuration;
-    }
-    // Clamp
-    alpha = Math.max(0, Math.min(1, alpha));
-
-    // Draw Black Background first
+    // Render Logic
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Apply Opacity
-    ctx.globalAlpha = alpha;
-
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
-        if (vid.readyState >= 2) {
+        
+        // Relaxed check: readyState >= 1 ensures we have metadata/first frame.
+        // We do NOT wait for readyState 4 for local blobs as it can be flaky.
+        if (vid.readyState >= 1) {
              const scale = Math.max(canvas.width / vid.videoWidth, canvas.height / vid.videoHeight);
              const x = (canvas.width - vid.videoWidth * scale) / 2;
              const y = (canvas.height - vid.videoHeight * scale) / 2;
@@ -319,12 +346,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
     }
 
-    // Reset Alpha for Text
-    ctx.globalAlpha = 1;
-
-    // Captions (Opacity follows scene or stays visible? Usually follows scene for smooth cut)
+    // Captions
     if (showCaptions) {
-        ctx.globalAlpha = alpha; // Fade text with scene
         const overlayHeight = isLandscape ? 120 : 200;
         const gradient = ctx.createLinearGradient(0, canvas.height - overlayHeight, 0, canvas.height);
         gradient.addColorStop(0, 'rgba(0,0,0,0)');
@@ -362,7 +385,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         lines.reverse().forEach((l, i) => {
            ctx.fillText(l, canvas.width / 2, canvas.height - textBottomMargin - (i * lineHeight));
         });
-        ctx.globalAlpha = 1; // Reset
     }
 
     // Transition Logic
@@ -377,7 +399,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
             stateRef.current.currentSceneIndex = nextIndex;
             stateRef.current.sceneStartTimestamp = 0; 
         } else {
-            // FINISHED
             stopSceneMedia();
             setIsPlaying(false);
             setCurrentSceneIndex(0); 
@@ -425,6 +446,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
       if (!requestRef.current) {
           stateRef.current.sceneStartTimestamp = 0;
       }
+      
       requestRef.current = requestAnimationFrame((t) => drawScene(t));
     }
   };
@@ -449,12 +471,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
      const stream = canvasRef.current.captureStream(30);
      const dest = audioContextRef.current.createMediaStreamDestination();
      
-     if (bgMusicGainRef.current) {
+     if (bgMusicSourceRef.current && bgMusicGainRef.current) {
          bgMusicGainRef.current.disconnect(); 
          bgMusicGainRef.current.connect(dest); 
      }
      
-     if (bgMusicElementRef.current) bgMusicElementRef.current.play();
+     if (bgMusicElementRef.current) {
+         bgMusicElementRef.current.play();
+     }
 
      if (dest.stream.getAudioTracks().length > 0) {
         stream.addTrack(dest.stream.getAudioTracks()[0]);
@@ -543,10 +567,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
 
   return (
     <div className="flex flex-col gap-4 w-full h-full">
-      {/* Hidden Container for mounted videos */}
       <div ref={videoContainerRef} hidden></div>
-
-      {/* Viewport */}
       <div className={`relative rounded-xl overflow-hidden shadow-2xl bg-black mx-auto transition-all duration-500 flex-1 w-full flex items-center justify-center bg-[#000] border border-zinc-900`}>
         <canvas 
           ref={canvasRef}
@@ -554,7 +575,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
           height={height}
           className="max-w-full max-h-full object-contain shadow-2xl"
         />
-        
         {isExporting && (
           <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
              <div className="text-center text-white p-6 bg-zinc-900 rounded-2xl border border-zinc-800 shadow-xl">
@@ -566,16 +586,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ scenes, orientation, backgrou
         )}
       </div>
 
-      {/* Progress & Controls */}
       <div className="flex flex-col gap-3 w-full">
-         
          <div className="flex items-center gap-1 h-1 w-full mb-1">
              {scenes.map((_, idx) => (
                  <div key={idx} className={`h-full rounded-full transition-colors flex-1 ${idx < currentSceneIndex ? 'bg-cyan-500' : idx === currentSceneIndex ? 'bg-white' : 'bg-zinc-800'}`} />
              ))}
          </div>
-
-         {/* Button Bar */}
          <div className="flex items-center justify-between bg-[#11141b] border border-zinc-800 rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-1">
                 <button onClick={() => skip('prev')} disabled={isExporting} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-all disabled:opacity-50">
