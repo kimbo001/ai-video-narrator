@@ -144,32 +144,32 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     setScenes(prev => prev.map(s => (s.id === sceneId ? { ...s, mediaUrl: objectUrl, mediaType: type, isRegenerating: false } : s)));
   };
 
-  /* ----------  SPLIT ON  ---  ---------- */
+  /* ----------  GENERATE  ---------- */
   const handleGenerate = async () => {
     if (!isPro && generationsToday >= 5) {
       alert("Daily limit reached (5/5). Please upgrade to Lifetime for unlimited videos!");
       return;
     }
     try {
+      /* 1.  GRAB UPLOADED FILES BEFORE WE CLEAR STATE  */
+      const existing = scenes.reduce((map, s) => {
+        if (s._file) map.set(s.visualSearchTerm, s._file);
+        return map;
+      }, new Map<string, File>());
+
+      /* 2.  NOW SAFE TO WIPE  */
       setScenes([]);
       setBackgroundMusicUrl(null);
       usedMediaUrlsRef.current = new Set();
       setStatus({ step: 'analyzing', message: 'Analyzing script...' });
 
       const segments = script.split('---').map(s => s.trim()).filter(Boolean);
-
-      /* NEW: keep uploaded files while rebuilding scenes */
-      const existing = scenes.reduce((map, s) => {
-        if (s._file) map.set(s.visualSearchTerm, s._file);
-        return map;
-      }, new Map<string, File>());
-
       const rawScenes: Scene[] = [];
       for (const seg of segments) {
         const { scenes: geminiScenes } = await analyzeScript(seg, config.visualSubject);
         const sc = geminiScenes[0];
         sc.id = `scene-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        sc._file = existing.get(sc.visualSearchTerm);   // remove "?? null"
+        sc._file = existing.get(sc.visualSearchTerm);   // undefined if none
         rawScenes.push(sc);
       }
 
@@ -237,7 +237,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         }
       }
 
-      /* 4️⃣  TTS  – one narration per scene  */
+      /* TTS */
       setStatus({ step: 'generating_audio', message: `Narrating scenes...` });
       const finalScenes: Scene[] = [];
       for (const scene of scenesWithMedia) {
