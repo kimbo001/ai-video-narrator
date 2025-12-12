@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
 import { analyzeScript, generateNarration } from '../services/gemini';
@@ -19,6 +18,28 @@ interface GeneratorProps {
   onBack: () => void;
 }
 
+/* ----------  SILENT-VIDEO HELPER  ---------- */
+async function muteVideo(file: File): Promise<Blob> {
+  return new Promise((res, rej) => {
+    const vid = document.createElement('video');
+    vid.muted = true;
+    vid.src = URL.createObjectURL(file);
+    vid.onloadedmetadata = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = vid.videoWidth;
+      canvas.height = vid.videoHeight;
+      const stream = canvas.captureStream(); // <- no width/height args
+      const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      const chunks: BlobPart[] = [];
+      rec.ondataavailable = (e) => chunks.push(e.data);
+      rec.onstop = () => res(new Blob(chunks, { type: 'video/webm' }));
+      vid.play();
+      rec.start();
+      vid.onended = () => rec.stop();
+    };
+    vid.onerror = rej;
+  });
+}
 const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [searchParams] = useSearchParams();
   const [script, setScript] = useState(DEFAULT_SCRIPT);
@@ -42,6 +63,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [isPro, setIsPro] = useState(false);
   const usedMediaUrlsRef = useRef<Set<string>>(new Set());
 
+  /* 24 h reset */
   useEffect(() => {
     const license = localStorage.getItem('license_key');
     setIsPro(!!license);
@@ -64,6 +86,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
   }, []);
 
+  /* chrome ext deep-link */
   useEffect(() => {
     const prefill = searchParams.get('script');
     if (prefill) {
@@ -104,15 +127,16 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     setScenes(prev => [...prev, ...newScenes]);
   };
 
-  const handleFileUpload = (sceneId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (sceneId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
+    const mutedBlob = await muteVideo(file);
+    const objectUrl = URL.createObjectURL(mutedBlob);
     const type = file.type.startsWith('video') ? 'video' : 'image';
     setScenes(prev => prev.map(s => (s.id === sceneId ? { ...s, mediaUrl: objectUrl, mediaType: type, isRegenerating: false } : s)));
   };
 
-  // ----------  NEW: SPLIT ON  ---  ----------
+  /* ----------  SPLIT ON  ---  ---------- */
   const handleGenerate = async () => {
     if (!isPro && generationsToday >= 5) {
       alert("Daily limit reached (5/5). Please upgrade to Lifetime for unlimited videos!");
@@ -124,15 +148,13 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       usedMediaUrlsRef.current = new Set();
       setStatus({ step: 'analyzing', message: 'Analyzing script...' });
 
-      // 1️⃣  SPLIT SCRIPT ON  ---
       const segments = script.split('---').map(s => s.trim()).filter(Boolean);
       const rawScenes: Scene[] = [];
       for (const seg of segments) {
-        const { scenes } = await analyzeScript(seg, config.visualSubject); // always 1 scene
+        const { scenes } = await analyzeScript(seg, config.visualSubject);
         rawScenes.push({ ...scenes[0], id: `scene-${Date.now()}-${Math.random().toString(36).slice(2)}` });
       }
 
-      // 2️⃣  AUDIO  (same as before)
       if (config.includeMusic) {
         if (musicFile) {
           setBackgroundMusicUrl(URL.createObjectURL(musicFile));
@@ -143,41 +165,55 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         }
       }
 
-      // 3️⃣  MEDIA  (same stock loop, but guarded by manualMode)
-      setStatus({ step: 'fetching_media', message: 'Finding stock media...' });
+      setStatus({ step: 'fetching_media', message: 'Building scenes...' });
       const scenesWithMedia: Scene[] = [];
-      for (let i = 0; i < rawScenes.length; i++) {
-        const scene = rawScenes[i];
-        let mediaUrl: string | undefined;
-        let mediaType = scene.mediaType;
-        setStatus({ step: 'fetching_media', message: `Searching media for scene ${i + 1}/${rawScenes.length}...` });
-        let result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
-        if (!result.url && mediaType === 'video') {
-          mediaType = 'image';
-          result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
+
+      if (config.manualMode) {
+        for (let i = 0; i < rawScenes.length; i++) {
+          const scene = rawScenes[i];
+          let mediaUrl = scene.mediaUrl;
+          let mediaType = scene.mediaType || 'image';
+          if (!mediaUrl) {
+            const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
+            const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
+            mediaUrl = `https://placeholder.co/${width}x${height}/000/fff?text=Scene+${i + 1}`;
+            mediaType = 'image';
+          }
+          scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
         }
-        mediaUrl = result.url || undefined;
-        if (!mediaUrl && config.visualSubject) {
-          const fallbackResult = await getStockMediaForScene(config.visualSubject, 'image', new Set());
-          mediaUrl = fallbackResult.url || undefined;
-          mediaType = 'image';
+      } else {
+        for (let i = 0; i < rawScenes.length; i++) {
+          const scene = rawScenes[i];
+          let mediaUrl: string | undefined;
+          let mediaType = scene.mediaType;
+          setStatus({ step: 'fetching_media', message: `Searching media for scene ${i + 1}/${rawScenes.length}...` });
+          let result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
+          if (!result.url && mediaType === 'video') {
+            mediaType = 'image';
+            result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
+          }
+          mediaUrl = result.url || undefined;
+          if (!mediaUrl && config.visualSubject) {
+            const fallbackResult = await getStockMediaForScene(config.visualSubject, 'image', new Set());
+            mediaUrl = fallbackResult.url || undefined;
+            mediaType = 'image';
+          }
+          if (!mediaUrl && i > 0 && scenesWithMedia[i - 1].mediaUrl) {
+            mediaUrl = scenesWithMedia[i - 1].mediaUrl;
+            mediaType = scenesWithMedia[i - 1].mediaType;
+          }
+          if (!mediaUrl) {
+            const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
+            const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
+            mediaUrl = `https://placeholder.co/${width}x${height}/000/fff?text=Scene+${i + 1}`;
+            mediaType = 'image';
+          } else {
+            if (mediaUrl) usedMediaUrlsRef.current.add(mediaUrl);
+          }
+          scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
         }
-        if (!mediaUrl && i > 0 && scenesWithMedia[i - 1].mediaUrl) {
-          mediaUrl = scenesWithMedia[i - 1].mediaUrl;
-          mediaType = scenesWithMedia[i - 1].mediaType;
-        }
-        if (!mediaUrl) {
-          const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
-          const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
-          mediaUrl = `https://placeholder.co/${width}x${height}/000000/FFF?text=Scene+${i + 1}`;
-          mediaType = 'image';
-        } else {
-          if (mediaUrl) usedMediaUrlsRef.current.add(mediaUrl);
-        }
-        scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
       }
 
-      // 4️⃣  TTS  (same as before)
       setStatus({ step: 'generating_audio', message: `Narrating scenes...` });
       const finalScenes = await Promise.all(
         scenesWithMedia.map(async (scene) => {
@@ -239,7 +275,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
   return (
     <div className="h-[calc(100vh-80px)] flex-1 w-full flex flex-col p-4 lg:p-6 overflow-hidden">
-      {/* nav / header */}
       <div className="mb-4 flex items-center justify-between shrink-0">
         <button onClick={onBack} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium"><ArrowLeft className="w-4 h-4" /> Back to Home</button>
         {!isPro && (
@@ -328,7 +363,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                     {config.manualMode && (
                       <label className="mt-2 cursor-pointer">
                         <input type="file" accept="video/*,image/*" className="hidden" onChange={(e) => handleFileUpload(scene.id, e)} />
-                        <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-zinc-300 border border-zinc-700"><Upload className="w-4 h-4" /> Upload clip</div>
+                        <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-zinc-300 border border-zinc-700">
+                          <Upload className="w-4 h-4" /> Upload clip
+                        </div>
                       </label>
                     )}
                   </div>
