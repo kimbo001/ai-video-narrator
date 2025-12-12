@@ -151,11 +151,11 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       return;
     }
     try {
-      /* 1.  GRAB UPLOADED FILES BEFORE WE CLEAR STATE  */
-      const existing = scenes.reduce((map, s) => {
-        if (s._file) map.set(s.visualSearchTerm, s._file);
-        return map;
-      }, new Map<string, File>());
+      /* SAVE FILES BEFORE WE WIPE STATE – key by scene.id  */
+const existing = scenes.reduce((map, s) => {
+  if (s._file) map.set(s.id, s._file);   // ← use id, not visualSearchTerm
+  return map;
+}, new Map<string, File>());
 
       /* 2.  NOW SAFE TO WIPE  */
       setScenes([]);
@@ -169,7 +169,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         const { scenes: geminiScenes } = await analyzeScript(seg, config.visualSubject);
         const sc = geminiScenes[0];
         sc.id = `scene-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        sc._file = existing.get(sc.visualSearchTerm);   // undefined if none
+        sc._file = existing.get(sc.id);   // undefined if none
         rawScenes.push(sc);
       }
 
