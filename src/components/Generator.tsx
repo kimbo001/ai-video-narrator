@@ -5,7 +5,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, RefreshCw, Upload, ArrowLeft } from 'lucide-react';
+import { Loader2, RefreshCw, Upload, ArrowLeft, Trash } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 import { useSearchParams } from 'react-router-dom';
 
@@ -177,7 +177,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           if (!mediaUrl) {
             const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
             const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
-            mediaUrl = `http://via.placeholder.com/${width}x${height}/000000/FFFFFF?text=Scene+${i + 1}`;
+            mediaUrl = `https://placehold.co/${width}x${height}/000000/FFFFFF?text=Scene+${i + 1}`;
             mediaType = 'image';
           }
           scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
@@ -206,7 +206,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           if (!mediaUrl) {
             const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
             const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
-            mediaUrl = `http://via.placeholder.com/${width}x${height}/000000/FFFFFF?text=Scene+${i + 1}`;
+            mediaUrl = `https://placehold.co/${width}x${height}/000000/FFFFFF?text=Scene+${i + 1}`;
             mediaType = 'image';
           } else {
             if (mediaUrl) usedMediaUrlsRef.current.add(mediaUrl);
@@ -215,20 +215,20 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         }
       }
 
+      /* 4️⃣  TTS  – one narration per scene  */
       setStatus({ step: 'generating_audio', message: `Narrating scenes...` });
-      const finalScenes = await Promise.all(
-        scenesWithMedia.map(async (scene) => {
-          try {
-            const audioData = await generateNarration(scene.narration, config.voiceName);
-            return { ...scene, audioData };
-          } catch (e) {
-            console.error(`TTS failed for scene: ${scene.id}`, e);
-            return scene;
-          }
-        })
-      );
+      const finalScenes: Scene[] = [];
+      for (const scene of scenesWithMedia) {
+        try {
+          const audioData = await generateNarration(scene.narration, config.voiceName);
+          finalScenes.push({ ...scene, audioData });
+        } catch (e) {
+          console.error(`TTS failed for scene: ${scene.id}`, e);
+          finalScenes.push(scene); // keep scene even if TTS fails
+        }
+      }
 
-      setScenes(finalScenes as Scene[]);
+      setScenes(finalScenes);
       setStatus({ step: 'ready' });
       const newCount = generationsToday + 1;
       setGenerationsToday(newCount);
@@ -359,13 +359,22 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                       </div>
                     </div>
                     <p className="mt-1 text-[10px] text-zinc-500 truncate">Scene {idx + 1}</p>
+                    {/* per-scene upload when manual */}
                     {config.manualMode && (
-                      <label className="mt-2 cursor-pointer">
-                        <input type="file" accept="video/*,image/*" className="hidden" onChange={(e) => handleFileUpload(scene.id, e)} />
-                        <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-zinc-300 border border-zinc-700">
-                          <Upload className="w-4 h-4" /> Upload clip
-                        </div>
-                      </label>
+                      <>
+                        <label className="mt-2 cursor-pointer">
+                          <input type="file" accept="video/*,image/*" className="hidden" onChange={(e) => handleFileUpload(scene.id, e)} />
+                          <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-zinc-300 border border-zinc-700">
+                            <Upload className="w-4 h-4" /> Upload clip
+                          </div>
+                        </label>
+                        <button
+                          onClick={() => setScenes(prev => prev.filter(s => s.id !== scene.id))}
+                          className="mt-2 text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"
+                        >
+                          <Trash className="w-3 h-3" /> Delete
+                        </button>
+                      </>
                     )}
                   </div>
                 ))}
