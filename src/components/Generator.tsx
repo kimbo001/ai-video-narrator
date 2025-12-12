@@ -5,7 +5,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Monitor, Smartphone, Mic, Focus, Ban, Upload, ArrowLeft } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Trash2, FileVideo, ImageIcon, Plus } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
@@ -15,6 +15,13 @@ const DEFAULT_UNSPLASH_KEY = "inICXEimMWagCfHA86bD4k9MprjkgEFmG0bW9UREkOo";
 
 interface GeneratorProps {
   onBack: () => void;
+}
+
+interface UploadedFile {
+    id: string;
+    file: File;
+    previewUrl: string;
+    type: 'image' | 'video';
 }
 
 const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
@@ -31,6 +38,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [status, setStatus] = useState<GenerationStatus>({ step: 'idle' });
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
+  
+  // Custom Media State
+  const [customUploads, setCustomUploads] = useState<UploadedFile[]>([]);
   
   // Usage Tracking
   const [generationsToday, setGenerationsToday] = useState(0);
@@ -59,6 +69,27 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
   };
 
+  // --- UPLOAD HANDLERS ---
+  const handleAddUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (event.target.files) {
+          const newFiles: UploadedFile[] = Array.from(event.target.files).map(file => {
+              const isVideo = file.type.startsWith('video') || file.name.match(/\.(mp4|webm|mov|mkv|avi)$/i);
+              return {
+                  id: Math.random().toString(36).substr(2, 9),
+                  file,
+                  previewUrl: URL.createObjectURL(file),
+                  type: isVideo ? 'video' : 'image'
+              };
+          });
+          setCustomUploads(prev => [...prev, ...newFiles]);
+      }
+  };
+
+  const removeUpload = (id: string) => {
+      setCustomUploads(prev => prev.filter(u => u.id !== id));
+  };
+
+  // --- API HANDLERS ---
   const getStockMediaForScene = async (
       query: string, 
       mediaType: 'image' | 'video', 
@@ -76,40 +107,15 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           let url: string | null = null;
           
           if (provider === 'pixabay') {
-              url = await fetchPixabayMedia(
-                  query, 
-                  mediaType, 
-                  config.pixabayApiKey, 
-                  config.orientation, 
-                  usedUrls, 
-                  config.visualSubject,
-                  config.negativePrompt
-              );
+              url = await fetchPixabayMedia(query, mediaType, config.pixabayApiKey, config.orientation, usedUrls, config.visualSubject, config.negativePrompt);
           } else if (provider === 'pexels') {
-              url = await fetchPexelsMedia(
-                  query, 
-                  mediaType, 
-                  config.pexelsApiKey, 
-                  config.orientation, 
-                  usedUrls, 
-                  config.visualSubject,
-                  config.negativePrompt
-              );
+              url = await fetchPexelsMedia(query, mediaType, config.pexelsApiKey, config.orientation, usedUrls, config.visualSubject, config.negativePrompt);
           } else if (provider === 'unsplash') {
-              url = await fetchUnsplashMedia(
-                  query,
-                  mediaType,
-                  config.unsplashApiKey,
-                  config.orientation,
-                  usedUrls,
-                  config.visualSubject,
-                  config.negativePrompt
-              );
+              url = await fetchUnsplashMedia(query, mediaType, config.unsplashApiKey, config.orientation, usedUrls, config.visualSubject, config.negativePrompt);
           }
 
           if (url) return { url, source: provider };
       }
-      
       return { url: null, source: 'none' };
   };
 
@@ -135,7 +141,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           else fetchPixabayAudio(config.pixabayApiKey, 'background music').then(u => setBackgroundMusicUrl(u));
       });
 
-      setStatus({ step: 'fetching_media', message: 'Finding stock media...' });
+      setStatus({ step: 'fetching_media', message: 'Allocating media...' });
       
       const scenesWithMedia: Scene[] = [];
 
@@ -144,36 +150,39 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         let mediaUrl: string | undefined;
         let mediaType = scene.mediaType;
 
-        setStatus({ step: 'fetching_media', message: `Searching media for scene ${i + 1}/${analyzedScenes.length}...` });
+        // 1. CHECK CUSTOM UPLOADS FIRST
+        if (i < customUploads.length) {
+            setStatus({ step: 'fetching_media', message: `Assigning custom media to Scene ${i + 1}...` });
+            mediaUrl = customUploads[i].previewUrl;
+            mediaType = customUploads[i].type;
+        } 
+        // 2. FETCH STOCK IF NO UPLOAD AVAILABLE
+        else {
+            setStatus({ step: 'fetching_media', message: `Searching stock media for Scene ${i + 1}...` });
              
-        let result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
-        if (!result.url && mediaType === 'video') {
-            mediaType = 'image';
-            result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
-        }
+            let result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
+            if (!result.url && mediaType === 'video') {
+                mediaType = 'image';
+                result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
+            }
              
-        mediaUrl = result.url || undefined;
-        
-        if (!mediaUrl && config.visualSubject) {
-             const fallbackResult = await getStockMediaForScene(config.visualSubject, 'image', new Set()); 
-             mediaUrl = fallbackResult.url || undefined;
-             mediaType = 'image';
+            mediaUrl = result.url || undefined;
+            
+            if (!mediaUrl && config.visualSubject) {
+                 const fallbackResult = await getStockMediaForScene(config.visualSubject, 'image', new Set()); 
+                 mediaUrl = fallbackResult.url || undefined;
+                 mediaType = 'image';
+            }
         }
 
         if (!mediaUrl) {
-           if (i > 0 && scenesWithMedia[i-1].mediaUrl) {
-               mediaUrl = scenesWithMedia[i-1].mediaUrl;
-               mediaType = scenesWithMedia[i-1].mediaType;
-           } else {
-               const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
-               const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
-               mediaUrl = `https://placehold.co/${width}x${height}/000000/FFF?text=Scene+1`;
-               mediaType = 'image';
-           }
+             // Fallback placeholder
+             const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
+             const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
+             mediaUrl = `https://placehold.co/${width}x${height}/000000/FFF?text=Scene+${i+1}`;
+             mediaType = 'image';
         } else {
-            if (mediaUrl) {
-                usedMediaUrlsRef.current.add(mediaUrl);
-            }
+            usedMediaUrlsRef.current.add(mediaUrl);
         }
 
         scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
@@ -206,6 +215,29 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
   };
 
+  // Helper for single scene updates (Post-Generation)
+  const handleSingleFileUpload = (sceneId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    const isVideo = file.type.startsWith('video') || file.name.match(/\.(mp4|webm|mov|mkv|avi)$/i);
+    const type = isVideo ? 'video' : 'image';
+
+    setScenes(prev => prev.map(s => {
+        if (s.id === sceneId) {
+            return { 
+                ...s, 
+                mediaUrl: objectUrl, 
+                mediaType: type, 
+                isRegenerating: false,
+                id: s.id + '-uploaded' 
+            };
+        }
+        return s;
+    }));
+  };
+  
   const handleRegenerateScene = async (sceneId: string) => {
     const sceneIndex = scenes.findIndex(s => s.id === sceneId);
     if (sceneIndex === -1) return;
@@ -227,46 +259,19 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
     if (mediaUrl) {
         usedMediaUrlsRef.current.add(mediaUrl);
-        newScenes[sceneIndex] = {
-            ...scene,
-            mediaUrl: mediaUrl,
-            mediaType: mediaType,
-            isRegenerating: false
-        };
+        newScenes[sceneIndex] = { ...scene, mediaUrl: mediaUrl, mediaType: mediaType, isRegenerating: false };
     } else {
         newScenes[sceneIndex] = { ...scene, isRegenerating: false };
         alert("No more unique media found.");
     }
-
     setScenes(newScenes);
-  };
-
-  const handleFileUpload = (sceneId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const objectUrl = URL.createObjectURL(file);
-    const isVideo = file.type.startsWith('video') || file.name.match(/\.(mp4|webm|mov|mkv|avi)$/i);
-    const type = isVideo ? 'video' : 'image';
-
-    setScenes(prev => prev.map(s => {
-        if (s.id === sceneId) {
-            return { 
-                ...s, 
-                mediaUrl: objectUrl, 
-                mediaType: type, 
-                isRegenerating: false,
-                id: s.id + '-uploaded' 
-            };
-        }
-        return s;
-    }));
   };
 
   const isGenerating = status.step !== 'idle' && status.step !== 'ready' && status.step !== 'error';
 
   return (
-    <div className="flex-1 max-w-[1600px] mx-auto p-4 lg:p-8 w-full h-full flex flex-col">
+    <div className="flex-1 max-w-[1800px] mx-auto p-4 lg:p-6 w-full h-full flex flex-col">
+        {/* Header */}
         <div className="mb-4 flex items-center justify-between">
             <button 
                 onClick={onBack}
@@ -283,37 +288,92 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             )}
         </div>
 
+        {/* 3-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full flex-1 min-h-0">
           
-          {/* Left Column */}
-          <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-y-auto custom-scrollbar pr-2">
-            
-            <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 flex flex-col shadow-lg">
-               <h2 className="text-white font-semibold text-lg mb-4">Your Story</h2>
+          {/* COLUMN 1: Story Script (3 Cols) */}
+          <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
+            <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 flex flex-col shadow-lg h-full">
+               <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-white font-semibold text-lg">1. Story Script</h2>
+                  <span className="text-xs text-zinc-500 font-mono">{script.length} chars</span>
+               </div>
                <textarea
                   value={script}
                   onChange={(e) => setScript(e.target.value)}
-                  className="flex-1 min-h-[150px] w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 mb-4"
-                  placeholder="Enter your story script here..."
+                  className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none resize-none transition-all placeholder:text-zinc-600 leading-relaxed custom-scrollbar"
+                  placeholder="Paste your script here. &#10;&#10;The AI will break this text into scenes. &#10;&#10;If you upload media in column 2, it will use your files first."
                />
-               <div className="flex items-center justify-end">
-                  <span className="text-xs text-zinc-500 font-mono">{script.length} chars</span>
-               </div>
+            </div>
+          </div>
+
+          {/* COLUMN 2: Config & Uploads (3 Cols) */}
+          <div className="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-1">
+            
+            {/* 2a: Media Library (Uploads) */}
+            <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg flex-1 min-h-[300px] flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-white font-semibold text-lg">2. Your Media</h2>
+                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Files</span>
+                        <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleAddUpload} />
+                    </label>
+                </div>
+
+                <div className="flex-1 bg-[#0b0e14] border border-zinc-800 rounded-xl p-3 overflow-y-auto custom-scrollbar">
+                    {customUploads.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-zinc-600 text-center p-4">
+                            <Upload className="w-8 h-8 mb-2 opacity-50" />
+                            <p className="text-xs">Upload videos/images here.</p>
+                            <p className="text-[10px] mt-2 opacity-50">They will be used sequentially for Scene 1, Scene 2, etc.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {customUploads.map((upload, idx) => (
+                                <div key={upload.id} className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800 group">
+                                    <div className="w-10 h-10 shrink-0 bg-black rounded overflow-hidden relative">
+                                        {upload.type === 'video' ? (
+                                            <video src={upload.previewUrl} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <img src={upload.previewUrl} className="w-full h-full object-cover" alt="" />
+                                        )}
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                            {upload.type === 'video' ? <FileVideo className="w-4 h-4 text-white" /> : <ImageIcon className="w-4 h-4 text-white" />}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-zinc-300 truncate">{upload.file.name}</p>
+                                        <p className="text-[10px] text-zinc-500">Assigned to Scene {idx + 1}</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => removeUpload(upload.id)}
+                                        className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-md transition-colors"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
+            {/* 2b: Settings */}
             <SettingsPanel config={config} onConfigChange={updateConfig} />
             
-             <button 
+            {/* Generate Button */}
+            <button 
                 onClick={handleGenerate}
                 disabled={isGenerating || !script.trim()}
-                className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-3 mt-auto"
-             >
+                className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-3"
+            >
                 {isGenerating ? (
                     <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        {status.step === 'analyzing' && 'Analyzing Script...'}
-                        {status.step === 'fetching_media' && 'Finding Stock Media...'}
-                        {status.step === 'generating_audio' && 'Recording Voice...'}
+                        {status.step === 'analyzing' && 'Analyzing...'}
+                        {status.step === 'fetching_media' && 'Allocating...'}
+                        {status.step === 'generating_audio' && 'Narrating...'}
                     </>
                 ) : (
                     <>
@@ -321,16 +381,15 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                         Generate Video
                     </>
                 )}
-             </button>
-
+            </button>
           </div>
 
-          {/* Right Column */}
-          <div className="lg:col-span-8 flex flex-col gap-6 h-full overflow-hidden">
+          {/* COLUMN 3: Preview (6 Cols) */}
+          <div className="lg:col-span-6 flex flex-col gap-6 h-full overflow-hidden">
              
              <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-6 h-full flex flex-col shadow-lg overflow-hidden">
                 <div className="flex items-center justify-between mb-4 shrink-0">
-                    <h2 className="text-white font-semibold text-lg">Preview</h2>
+                    <h2 className="text-white font-semibold text-lg">3. Preview</h2>
                     <div className="flex items-center gap-2">
                          {scenes.length > 0 && (
                              <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded border border-green-400/20">Ready to Export</span>
@@ -338,10 +397,12 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                <div className="h-[480px] shrink-0 bg-[#0b0e14] rounded-xl border border-zinc-800 overflow-hidden relative flex flex-col items-center justify-center mb-6">
+                {/* Player */}
+                <div className="h-[400px] 2xl:h-[480px] shrink-0 bg-[#0b0e14] rounded-xl border border-zinc-800 overflow-hidden relative flex flex-col items-center justify-center mb-6">
                     <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} />
                 </div>
 
+                {/* Storyboard List */}
                 <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
                     <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#11141b] z-10 pb-2">
                         <h3 className="text-sm font-medium text-zinc-400">Storyboard Scenes</h3>
@@ -349,15 +410,15 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                     </div>
                     
                     {scenes.length === 0 ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 opacity-30">
-                            {[1,2,3,4].map(i => (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 opacity-30">
+                            {[1,2,3].map(i => (
                                 <div key={i} className="aspect-video bg-[#0b0e14] rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-600 text-xs">
                                     Scene {i}
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4 pb-2">
                             {scenes.map((scene, idx) => (
                                 <div key={scene.id} className="relative group">
                                     <div className={`w-full ${config.orientation === VideoOrientation.Landscape ? 'aspect-video' : 'aspect-[9/16]'} bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800 relative`}>
@@ -373,7 +434,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                                             <img src={scene.mediaUrl} className="w-full h-full object-cover" alt="" />
                                         )}
                                         
-                                        {/* CHANGED: Buttons are now always visible in top right, not hidden on hover */}
+                                        {/* Action Buttons */}
                                         <div className="absolute top-2 right-2 flex flex-col gap-2 z-20">
                                             <button 
                                                 onClick={() => handleRegenerateScene(scene.id)}
@@ -383,25 +444,24 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                                             >
                                                 <RefreshCw className={`w-3.5 h-3.5 ${scene.isRegenerating ? 'animate-spin' : ''}`} />
                                             </button>
-                                            <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer shadow-lg border border-white/10" title="Upload Media">
+                                            <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer shadow-lg border border-white/10" title="Replace Media">
                                                 <Upload className="w-3.5 h-3.5" />
                                                 <input 
                                                     type="file" 
                                                     className="hidden" 
                                                     accept="image/*,video/*"
-                                                    onChange={(e) => handleFileUpload(scene.id, e)}
+                                                    onChange={(e) => handleSingleFileUpload(scene.id, e)}
                                                 />
                                             </label>
                                         </div>
                                         
                                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2 pt-6 pointer-events-none">
                                             <p className="text-[10px] text-zinc-300 truncate">
-                                                {config.negativePrompt ? <span className="text-red-400 mr-1">!</span> : null}
                                                 {scene.visualSearchTerm}
                                             </p>
                                         </div>
                                     </div>
-                                    <p className="mt-1.5 text-[10px] text-zinc-500 truncate">Scene {idx+1}</p>
+                                    <p className="mt-1.5 text-[10px] text-zinc-500 truncate">Scene {idx+1}: {scene.narration.substring(0,25)}...</p>
                                 </div>
                             ))}
                         </div>
