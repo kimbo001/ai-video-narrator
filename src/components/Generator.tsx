@@ -53,7 +53,7 @@ function useObjectUrl(file: File | null | undefined): string | null {
   return url;
 }
 
-/* ----------  SMALL AI-EQUALISER ANIMATION  ---------- */
+/* ----------  AI-EQUALISER ANIMATION  ---------- */
 const AiEqualiser = () => (
   <div className="flex items-center justify-center gap-1 h-10">
     {[...Array(5)].map((_, i) => (
@@ -66,6 +66,47 @@ const AiEqualiser = () => (
   </div>
 );
 
+/* ----------  SCENE-CARD COMPONENT (keeps hooks at top level)  ---------- */
+type SceneCardProps = { scene: Scene; idx: number; onRegen: (id: string) => void; onUpload: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void; onDelete: (id: string) => void; manual: boolean };
+
+function SceneCard({ scene, idx, onRegen, onUpload, onDelete, manual }: SceneCardProps) {
+  const blobUrl = useObjectUrl(scene._file);
+  const src = scene.mediaUrl || blobUrl;
+
+  return (
+    <div className="relative group">
+      <div className={"w-full aspect-video bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800 relative " + (scene.isRegenerating ? "opacity-50" : "")}>
+        {scene.mediaType === 'video' ? (
+          <video src={src || ''} className="w-full h-full object-cover" muted loop />
+        ) : (
+          <img src={src || ''} className="w-full h-full object-cover" />
+        )}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+          <button onClick={() => onRegen(scene.id)} className="p-1.5 bg-black/60 rounded-full text-white"><RefreshCw className="w-4 h-4" /></button>
+        </div>
+      </div>
+      <p className="mt-1 text-[10px] text-zinc-500 truncate">Scene {idx + 1}</p>
+      {manual && (
+        <>
+          <label className="mt-2 cursor-pointer">
+            <input type="file" accept="video/*,image/*" className="hidden" onChange={(e) => onUpload(scene.id, e)} />
+            <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-zinc-300 border border-zinc-700">
+              <Upload className="w-4 h-4" /> Upload clip
+            </div>
+          </label>
+          <button
+            onClick={() => onDelete(scene.id)}
+            className="mt-2 text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"
+          >
+            <Trash className="w-3 h-3" /> Delete
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ----------  MAIN COMPONENT  ---------- */
 const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [searchParams] = useSearchParams();
   const [script, setScript] = useState(DEFAULT_SCRIPT);
@@ -146,7 +187,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     return { url: null, source: 'none' };
   };
 
-  /* ----------  BULK UPLOAD – store File, NO blob URL  ---------- */
+  /* ----------  BULK UPLOAD – store File only  ---------- */
   const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -155,8 +196,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       narration: `Scene ${idx + 1}`,
       visualSearchTerm: '',
       mediaType: file.type.startsWith('video') ? 'video' : 'image',
-     // mediaUrl: null,      // no blob yet
-      _file: file,         // raw file survives reload
+      // mediaUrl omitted → undefined
+      _file: file,
     }));
     setScenes(prev => [...prev, ...newScenes]);
   };
@@ -177,7 +218,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       return;
     }
     try {
-      /* 1.  keep uploaded files BEFORE we wipe state */
       const existing = scenes.reduce((map, s) => {
         if (s._file) map.set(s.id, s._file);
         return map;
@@ -194,7 +234,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         const { scenes: geminiScenes } = await analyzeScript(seg, config.visualSubject);
         const sc = geminiScenes[0];
         sc.id = `scene-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        sc._file = existing.get(sc.id);   // undefined if none
+        sc._file = existing.get(sc.id);
         rawScenes.push(sc);
       }
 
@@ -402,41 +442,17 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             {/* SCENE STRIPS */}
             <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar p-4 bg-[#0b0e14]/50">
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pb-2">
-                {scenes.map((scene, idx) => {
-                  const blobUrl = useObjectUrl(scene._file);
-                  const src = scene.mediaUrl || blobUrl;
-                  return (
-                    <div key={scene.id} className="relative group">
-                      <div className={"w-full aspect-video bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800 relative " + (scene.isRegenerating ? "opacity-50" : "")}>
-                        {scene.mediaType === 'video' ? (
-                          <video src={src || ''} className="w-full h-full object-cover" muted loop />
-                        ) : (
-                          <img src={src || ''} className="w-full h-full object-cover" />
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                          <button onClick={() => handleRegenerateScene(scene.id)} className="p-1.5 bg-black/60 rounded-full text-white"><RefreshCw className="w-4 h-4" /></button>
-                        </div>
-                      </div>
-                      <p className="mt-1 text-[10px] text-zinc-500 truncate">Scene {idx + 1}</p>
-                      {config.manualMode && (
-                        <>
-                          <label className="mt-2 cursor-pointer">
-                            <input type="file" accept="video/*,image/*" className="hidden" onChange={(e) => handleFileUpload(scene.id, e)} />
-                            <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-zinc-300 border border-zinc-700">
-                              <Upload className="w-4 h-4" /> Upload clip
-                            </div>
-                          </label>
-                          <button
-                            onClick={() => setScenes(prev => prev.filter(s => s.id !== scene.id))}
-                            className="mt-2 text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"
-                          >
-                            <Trash className="w-3 h-3" /> Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                {scenes.map((scene, idx) => (
+                  <SceneCard
+                    key={scene.id}
+                    scene={scene}
+                    idx={idx}
+                    onRegen={handleRegenerateScene}
+                    onUpload={handleFileUpload}
+                    onDelete={(id) => setScenes(prev => prev.filter(s => s.id !== id))}
+                    manual={Boolean(config.manualMode)}
+                  />
+                ))}
               </div>
             </div>
           </div>
