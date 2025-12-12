@@ -128,7 +128,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       
       const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject);
       
-      // Auto-fetch music (simplified for original look)
+      // Auto-fetch music
       const mood = config.visualSubject || 'cinematic ambient';
       fetchPixabayAudio(config.pixabayApiKey, mood).then(url => {
           if (url) setBackgroundMusicUrl(url);
@@ -241,14 +241,11 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     setScenes(newScenes);
   };
 
-  // FIXED: Logic to correctly identify uploaded video files
   const handleFileUpload = (sceneId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const objectUrl = URL.createObjectURL(file);
-    
-    // Improved detection: Check MIME type OR file extension
     const isVideo = file.type.startsWith('video') || file.name.match(/\.(mp4|webm|mov|mkv|avi)$/i);
     const type = isVideo ? 'video' : 'image';
 
@@ -257,10 +254,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             return { 
                 ...s, 
                 mediaUrl: objectUrl, 
-                mediaType: type, // This ensures VideoPlayer renders a <video> tag
+                mediaType: type, 
                 isRegenerating: false,
-                // Changing ID slightly forces VideoPlayer to re-mount the component, 
-                // ensuring the new video blob loads correctly.
                 id: s.id + '-uploaded' 
             };
         }
@@ -378,17 +373,18 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                                             <img src={scene.mediaUrl} className="w-full h-full object-cover" alt="" />
                                         )}
                                         
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        {/* CHANGED: Buttons are now always visible in top right, not hidden on hover */}
+                                        <div className="absolute top-2 right-2 flex flex-col gap-2 z-20">
                                             <button 
                                                 onClick={() => handleRegenerateScene(scene.id)}
                                                 disabled={scene.isRegenerating}
-                                                className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors"
+                                                className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors shadow-lg border border-white/10"
                                                 title="Regenerate Visual"
                                             >
-                                                <RefreshCw className={`w-4 h-4 ${scene.isRegenerating ? 'animate-spin' : ''}`} />
+                                                <RefreshCw className={`w-3.5 h-3.5 ${scene.isRegenerating ? 'animate-spin' : ''}`} />
                                             </button>
-                                            <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer" title="Upload Media">
-                                                <Upload className="w-4 h-4" />
+                                            <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer shadow-lg border border-white/10" title="Upload Media">
+                                                <Upload className="w-3.5 h-3.5" />
                                                 <input 
                                                     type="file" 
                                                     className="hidden" 
@@ -396,6 +392,13 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                                                     onChange={(e) => handleFileUpload(scene.id, e)}
                                                 />
                                             </label>
+                                        </div>
+                                        
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2 pt-6 pointer-events-none">
+                                            <p className="text-[10px] text-zinc-300 truncate">
+                                                {config.negativePrompt ? <span className="text-red-400 mr-1">!</span> : null}
+                                                {scene.visualSearchTerm}
+                                            </p>
                                         </div>
                                     </div>
                                     <p className="mt-1.5 text-[10px] text-zinc-500 truncate">Scene {idx+1}</p>
