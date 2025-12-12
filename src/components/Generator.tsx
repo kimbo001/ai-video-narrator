@@ -28,7 +28,7 @@ async function muteVideo(file: File): Promise<Blob> {
       const canvas = document.createElement('canvas');
       canvas.width = vid.videoWidth;
       canvas.height = vid.videoHeight;
-      const stream = canvas.captureStream(); // <- no width/height args
+      const stream = canvas.captureStream();
       const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
       const chunks: BlobPart[] = [];
       rec.ondataavailable = (e) => chunks.push(e.data);
@@ -40,6 +40,7 @@ async function muteVideo(file: File): Promise<Blob> {
     vid.onerror = rej;
   });
 }
+
 const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [searchParams] = useSearchParams();
   const [script, setScript] = useState(DEFAULT_SCRIPT);
@@ -176,7 +177,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           if (!mediaUrl) {
             const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
             const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
-            mediaUrl = `https://placeholder.co/${width}x${height}/000/fff?text=Scene+${i + 1}`;
+            mediaUrl = `http://via.placeholder.com/${width}x${height}/000000/FFFFFF?text=Scene+${i + 1}`;
             mediaType = 'image';
           }
           scenesWithMedia.push({ ...scene, mediaUrl, mediaType });
@@ -205,7 +206,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           if (!mediaUrl) {
             const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
             const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
-            mediaUrl = `https://placeholder.co/${width}x${height}/000/fff?text=Scene+${i + 1}`;
+            mediaUrl = `http://via.placeholder.com/${width}x${height}/000000/FFFFFF?text=Scene+${i + 1}`;
             mediaType = 'image';
           } else {
             if (mediaUrl) usedMediaUrlsRef.current.add(mediaUrl);
@@ -318,7 +319,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4">
             <SettingsPanel config={config} onConfigChange={updateConfig} />
-            {/* Bulk upload when manual */}
             {config.manualMode && (
               <div className="mt-4 flex justify-center">
                 <label>
@@ -359,7 +359,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                       </div>
                     </div>
                     <p className="mt-1 text-[10px] text-zinc-500 truncate">Scene {idx + 1}</p>
-                    {/* per-scene upload when manual */}
                     {config.manualMode && (
                       <label className="mt-2 cursor-pointer">
                         <input type="file" accept="video/*,image/*" className="hidden" onChange={(e) => handleFileUpload(scene.id, e)} />
