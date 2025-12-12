@@ -310,54 +310,56 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           {/* COLUMN 2: Config & Uploads (3 Cols) */}
           <div className="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-1">
             
-            {/* 2a: Media Library (Uploads) */}
-            <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg flex-1 min-h-[300px] flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-white font-semibold text-lg">2. Your Media</h2>
-                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Files</span>
-                        <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleAddUpload} />
-                    </label>
-                </div>
+            {/* 2a: Media Library (Uploads) – ONLY WHEN MANUAL MODE IS ON */}
+            {config.manualMode && (
+              <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg flex-1 min-h-[300px] flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-white font-semibold text-lg">2. Your Media</h2>
+                      <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Files</span>
+                          <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleAddUpload} />
+                      </label>
+                  </div>
 
-                <div className="flex-1 bg-[#0b0e14] border border-zinc-800 rounded-xl p-3 overflow-y-auto custom-scrollbar">
-                    {customUploads.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-zinc-600 text-center p-4">
-                            <Upload className="w-8 h-8 mb-2 opacity-50" />
-                            <p className="text-xs">Upload videos/images here.</p>
-                            <p className="text-[10px] mt-2 opacity-50">They will be used sequentially for Scene 1, Scene 2, etc.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {customUploads.map((upload, idx) => (
-                                <div key={upload.id} className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800 group">
-                                    <div className="w-10 h-10 shrink-0 bg-black rounded overflow-hidden relative">
-                                        {upload.type === 'video' ? (
-                                            <video src={upload.previewUrl} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <img src={upload.previewUrl} className="w-full h-full object-cover" alt="" />
-                                        )}
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                            {upload.type === 'video' ? <FileVideo className="w-4 h-4 text-white" /> : <ImageIcon className="w-4 h-4 text-white" />}
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-zinc-300 truncate">{upload.file.name}</p>
-                                        <p className="text-[10px] text-zinc-500">Assigned to Scene {idx + 1}</p>
-                                    </div>
-                                    <button 
-                                        onClick={() => removeUpload(upload.id)}
-                                        className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-md transition-colors"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+                  <div className="flex-1 bg-[#0b0e14] border border-zinc-800 rounded-xl p-3 overflow-y-auto custom-scrollbar">
+                      {customUploads.length === 0 ? (
+                          <div className="h-full flex flex-col items-center justify-center text-zinc-600 text-center p-4">
+                              <Upload className="w-8 h-8 mb-2 opacity-50" />
+                              <p className="text-xs">Upload videos/images here.</p>
+                              <p className="text-[10px] mt-2 opacity-50">They will be used sequentially for Scene 1, Scene 2, etc.</p>
+                          </div>
+                      ) : (
+                          <div className="space-y-2">
+                              {customUploads.map((upload, idx) => (
+                                  <div key={upload.id} className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800 group">
+                                      <div className="w-10 h-10 shrink-0 bg-black rounded overflow-hidden relative">
+                                          {upload.type === 'video' ? (
+                                              <video src={upload.previewUrl} className="w-full h-full object-cover" />
+                                          ) : (
+                                              <img src={upload.previewUrl} className="w-full h-full object-cover" alt="" />
+                                          )}
+                                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                              {upload.type === 'video' ? <FileVideo className="w-4 h-4 text-white" /> : <ImageIcon className="w-4 h-4 text-white" />}
+                                          </div>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                          <p className="text-xs text-zinc-300 truncate">{upload.file.name}</p>
+                                          <p className="text-[10px] text-zinc-500">Assigned to Scene {idx + 1}</p>
+                                      </div>
+                                      <button 
+                                          onClick={() => removeUpload(upload.id)}
+                                          className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-md transition-colors"
+                                      >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              </div>
+            )}
 
             {/* 2b: Settings */}
             <SettingsPanel config={config} onConfigChange={updateConfig} />
@@ -402,71 +404,74 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                     <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} />
                 </div>
 
-                {/* Storyboard List */}
-                <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
-                    <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#11141b] z-10 pb-2">
-                        <h3 className="text-sm font-medium text-zinc-400">Storyboard Scenes</h3>
-                        <span className="text-xs text-zinc-600">{scenes.length} Scenes</span>
-                    </div>
-                    
-                    {scenes.length === 0 ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 opacity-30">
-                            {[1,2,3].map(i => (
-                                <div key={i} className="aspect-video bg-[#0b0e14] rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-600 text-xs">
-                                    Scene {i}
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4 pb-2">
-                            {scenes.map((scene, idx) => (
-                                <div key={scene.id} className="relative group">
-                                    <div className={`w-full ${config.orientation === VideoOrientation.Landscape ? 'aspect-video' : 'aspect-[9/16]'} bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800 relative`}>
-                                        {scene.mediaType === 'video' ? (
-                                            <video 
-                                                src={scene.mediaUrl} 
-                                                className="w-full h-full object-cover" 
-                                                muted 
-                                                onMouseOver={e => e.currentTarget.play().catch(() => {})} 
-                                                onMouseOut={e => e.currentTarget.pause()}
-                                            />
-                                        ) : (
-                                            <img src={scene.mediaUrl} className="w-full h-full object-cover" alt="" />
-                                        )}
-                                        
-                                        {/* Action Buttons */}
-                                        <div className="absolute top-2 right-2 flex flex-col gap-2 z-20">
-                                            <button 
-                                                onClick={() => handleRegenerateScene(scene.id)}
-                                                disabled={scene.isRegenerating}
-                                                className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors shadow-lg border border-white/10"
-                                                title="Regenerate Visual"
-                                            >
-                                                <RefreshCw className={`w-3.5 h-3.5 ${scene.isRegenerating ? 'animate-spin' : ''}`} />
-                                            </button>
-                                            <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer shadow-lg border border-white/10" title="Replace Media">
-                                                <Upload className="w-3.5 h-3.5" />
-                                                <input 
-                                                    type="file" 
-                                                    className="hidden" 
-                                                    accept="image/*,video/*"
-                                                    onChange={(e) => handleSingleFileUpload(scene.id, e)}
-                                                />
-                                            </label>
-                                        </div>
-                                        
-                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2 pt-6 pointer-events-none">
-                                            <p className="text-[10px] text-zinc-300 truncate">
-                                                {scene.visualSearchTerm}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p className="mt-1.5 text-[10px] text-zinc-500 truncate">Scene {idx+1}: {scene.narration.substring(0,25)}...</p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                {/* Storyboard List – ONLY WHEN MANUAL MODE IS ON */}
+                {config.manualMode && (
+                  <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+                      <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#11141b] z-10 pb-2">
+                          <h3 className="text-sm font-medium text-zinc-400">Storyboard Scenes</h3>
+                          <span className="text-xs text-zinc-600">{scenes.length} Scenes</span>
+                      </div>
+                      
+                      {scenes.length === 0 ? (
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 opacity-30">
+                              {[1,2,3].map(i => (
+                                  <div key={i} className="aspect-video bg-[#0b0e14] rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-600 text-xs">
+                                      Scene {i}
+                                  </div>
+                              ))}
+                          </div>
+                      ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4 pb-2">
+                              {scenes.map((scene, idx) => (
+                                  <div key={scene.id} className="relative group">
+                                      <div className={`w-full ${config.orientation === VideoOrientation.Landscape ? 'aspect-video' : 'aspect-[9/16]'} bg-[#0b0e14] rounded-lg overflow-hidden border border-zinc-800 relative`}>
+                                          {scene.mediaType === 'video' ? (
+                                              <video 
+                                                  src={scene.mediaUrl} 
+                                                  className="w-full h-full object-cover" 
+                                                  muted 
+                                                  onMouseOver={e => e.currentTarget.play().catch(() => {})} 
+                                                  onMouseOut={e => e.currentTarget.pause()}
+                                              />
+                                          ) : (
+                                              <img src={scene.mediaUrl} className="w-full h-full object-cover" alt="" />
+                                          )}
+                                          
+                                          {/* Action Buttons */}
+                                          <div className="absolute top-2 right-2 flex flex-col gap-2 z-20">
+                                              <button 
+                                                  onClick={() => handleRegenerateScene(scene.id)}
+                                                  disabled={scene.isRegenerating}
+                                                  className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors shadow-lg border border-white/10"
+                                                  title="Regenerate Visual"
+                                              >
+                                                  <RefreshCw className={`w-3.5 h-3.5 ${scene.isRegenerating ? 'animate-spin' : ''}`} />
+                                              </button>
+                                              <label className="p-1.5 bg-black/60 rounded-full text-white hover:bg-cyan-500 hover:text-white transition-colors cursor-pointer shadow-lg border border-white/10" title="Replace Media">
+                                                  <Upload className="w-3.5 h-3.5" />
+                                                  <input 
+                                                      type="file" 
+                                                      className="hidden" 
+                                                      accept="image/*,video/*"
+                                                      onChange={(e) => handleSingleFileUpload(scene.id, e)}
+                                                  />
+                                              </label>
+                                          </div>
+                                          
+                                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2 pt-6 pointer-events-none">
+                                              <p className="text-[10px] text-zinc-300 truncate">
+                                                  {scene.visualSearchTerm}
+                                              </p>
+                                          </div>
+                                      </div>
+                                      <p className="mt-1.5 text-[10px] text-zinc-500 truncate">Scene {idx+1}: {scene.narration.substring(0,25)}...</p>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+                )}
+
              </div>
           </div>
         </div>
