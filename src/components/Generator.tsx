@@ -67,14 +67,7 @@ const AiEqualiser = () => (
 );
 
 /* ----------  SCENE-CARD COMPONENT (keeps hooks at top level)  ---------- */
-type SceneCardProps = {
-  scene: Scene;
-  idx: number;
-  onRegen: (id: string) => void;
-  onUpload: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void;
-  onDelete: (id: string) => void;
-  manual: boolean;
-};
+type SceneCardProps = { scene: Scene; idx: number; onRegen: (id: string) => void; onUpload: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void; onDelete: (id: string) => void; manual: boolean };
 
 function SceneCard({ scene, idx, onRegen, onUpload, onDelete, manual }: SceneCardProps) {
   const blobUrl = useObjectUrl(scene._file);
@@ -459,17 +452,18 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
               <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400">3</div>
               <h2 className="text-white font-semibold text-sm">Preview & Export</h2>
             </div>
-            {/* BIG ORANGE UPLOAD BUTTON – classic layout */}
-            <label>
-              <input type="file" multiple accept="video/*,image/*" className="hidden" onChange={handleBulkUpload} />
-              <div className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded-xl cursor-pointer flex items-center gap-2">
-                <Upload className="w-4 h-4" /> Upload clips
-              </div>
-            </label>
           </div>
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/*  AI-WORKING ANIMATION INSIDE PREVIEW  */}
             <div className="h-[400px] shrink-0 bg-[#0b0e14] border-b border-zinc-800 overflow-hidden relative flex items-center justify-center">
-              <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} musicVolume={musicVolume} />
+              {isGenerating ? (
+                <div className="flex flex-col items-center gap-3 text-zinc-400">
+                  <AiEqualiser />
+                  <span className="text-sm">AI is working…</span>
+                </div>
+              ) : (
+                <VideoPlayer scenes={scenes} orientation={config.orientation} backgroundMusicUrl={backgroundMusicUrl} musicVolume={musicVolume} />
+              )}
             </div>
             <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar p-4 bg-[#0b0e14]/50">
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pb-2">
