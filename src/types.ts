@@ -1,4 +1,3 @@
-
 export enum VideoOrientation {
   Landscape = 'horizontal',
   Portrait = 'vertical'
@@ -9,11 +8,11 @@ export interface Scene {
   narration: string;
   visualSearchTerm: string;
   mediaType: 'image' | 'video';
-  mediaUrl?: string; // URL for image or video
-  audioData?: string; // Base64 PCM
-  duration?: number; // Calculated duration in seconds
-  isRegenerating?: boolean; // UI state for regeneration
-  isBranding?: boolean; // Flag for the outro slide
+  mediaUrl?: string;
+  audioData?: string;
+  duration?: number;
+  isRegenerating?: boolean;
+  isBranding?: boolean;
 }
 
 export interface GenerationStatus {
@@ -28,8 +27,9 @@ export interface AppConfig {
   unsplashApiKey: string;
   orientation: VideoOrientation;
   visualSubject: string;
-  voiceName: string; // Gemini voice name
+  voiceName: string;
   negativePrompt: string;
+  manualMode?: boolean;   // <-- NEW
 }
 
 export type Page = 'home' | 'generator' | 'pricing' | 'legal';

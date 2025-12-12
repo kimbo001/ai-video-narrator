@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AppConfig, VideoOrientation } from '../types';
 import { Settings, Focus, Monitor, Smartphone, Mic, Ban } from 'lucide-react';
@@ -17,7 +16,7 @@ const GEMINI_VOICES = [
 ];
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, onConfigChange }) => {
-  const handleChange = (field: keyof AppConfig, value: string) => {
+  const handleChange = (field: keyof AppConfig, value: string | boolean) => {
     onConfigChange({ ...config, [field]: value });
   };
 
@@ -30,11 +29,20 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, onConfigChange })
 
       <div className="flex flex-col gap-6">
         
+        {/* Manual Mode Toggle */}
+        <div className="flex items-center justify-between bg-zinc-800/50 border border-zinc-700 rounded-lg p-3">
+          <span className="text-sm font-medium text-zinc-200">Manual Mode (upload own clips)</span>
+          <button
+            onClick={() => handleChange('manualMode', !config.manualMode)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${config.manualMode ? 'bg-cyan-500' : 'bg-zinc-600'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${config.manualMode ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
         {/* Visual Subject Override */}
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-2">
-            Main Visual Subject
-          </label>
+          <label className="block text-sm font-medium text-zinc-300 mb-2">Main Visual Subject</label>
           <div className="relative">
             <Focus className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
             <input
@@ -45,16 +53,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, onConfigChange })
               className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm text-zinc-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-zinc-600"
             />
           </div>
-          <p className="mt-1.5 text-xs text-zinc-500">
-            Forces all generated media to match this specific subject.
-          </p>
+          <p className="mt-1.5 text-xs text-zinc-500">Forces all generated media to match this specific subject.</p>
         </div>
 
         {/* Negative Prompt */}
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-2">
-            Negative Prompts <span className="text-zinc-500 font-normal">(Exclude)</span>
-          </label>
+          <label className="block text-sm font-medium text-zinc-300 mb-2">Negative Prompts <span className="text-zinc-500 font-normal">(Exclude)</span></label>
           <div className="relative">
             <Ban className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
             <input
@@ -69,9 +73,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, onConfigChange })
 
         {/* Voice Selection */}
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-2">
-            Narrator Voice
-          </label>
+          <label className="block text-sm font-medium text-zinc-300 mb-2">Narrator Voice</label>
           <div className="relative">
             <Mic className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
             <select
@@ -89,9 +91,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, onConfigChange })
 
         {/* Orientation */}
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-2">
-            Video Orientation
-          </label>
+          <label className="block text-sm font-medium text-zinc-300 mb-2">Video Orientation</label>
           <div className="flex gap-3">
             <button
               onClick={() => handleChange('orientation', VideoOrientation.Landscape)}
