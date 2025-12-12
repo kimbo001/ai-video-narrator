@@ -13,6 +13,7 @@ export interface Scene {
   duration?: number;
   isRegenerating?: boolean;
   isBranding?: boolean;
+  _file?: File; // raw uploaded file (manual mode)
 }
 
 export interface GenerationStatus {
@@ -29,7 +30,7 @@ export interface AppConfig {
   visualSubject: string;
   voiceName: string;
   negativePrompt: string;
-  manualMode?: boolean;   // <-- NEW
+  manualMode?: boolean;
 }
 
 export type Page = 'home' | 'generator' | 'pricing' | 'legal';

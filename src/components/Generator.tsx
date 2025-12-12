@@ -96,6 +96,12 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
   }, [searchParams]);
 
+  /* clean-up object URLs on unmount */
+  useEffect(() => {
+    const urls = scenes.map(s => s.mediaUrl).filter(Boolean) as string[];
+    return () => urls.forEach(u => URL.revokeObjectURL(u));
+  }, [scenes]);
+
   const updateConfig = (newConfig: AppConfig) => setConfig(prev => ({ ...prev, ...newConfig }));
 
   const getStockMediaForScene = async (query: string, mediaType: 'image' | 'video', usedUrls: Set<string>): Promise<{ url: string | null; source: string }> => {
@@ -124,6 +130,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       visualSearchTerm: '',
       mediaType: file.type.startsWith('video') ? 'video' : 'image',
       mediaUrl: URL.createObjectURL(file),
+      _file: file, // keep raw file for later mute
     }));
     setScenes(prev => [...prev, ...newScenes]);
   };
@@ -174,6 +181,12 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           const scene = rawScenes[i];
           let mediaUrl = scene.mediaUrl;
           let mediaType = scene.mediaType || 'image';
+          if (scene._file) {
+            // user uploaded → mute & use
+            const mutedBlob = await muteVideo(scene._file);
+            mediaUrl = URL.createObjectURL(mutedBlob);
+            mediaType = scene._file.type.startsWith('video') ? 'video' : 'image';
+          }
           if (!mediaUrl) {
             const width = config.orientation === VideoOrientation.Landscape ? 1280 : 720;
             const height = config.orientation === VideoOrientation.Landscape ? 720 : 1280;
@@ -227,7 +240,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           finalScenes.push(scene); // keep scene even if TTS fails
         }
       }
-
       setScenes(finalScenes);
       setStatus({ step: 'ready' });
       const newCount = generationsToday + 1;
@@ -359,7 +371,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                       </div>
                     </div>
                     <p className="mt-1 text-[10px] text-zinc-500 truncate">Scene {idx + 1}</p>
-                    {/* per-scene upload when manual */}
                     {config.manualMode && (
                       <>
                         <label className="mt-2 cursor-pointer">
