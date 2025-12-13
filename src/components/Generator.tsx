@@ -5,7 +5,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Trash2, FileVideo, ImageIcon, Plus, Music, Volume2, X } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Trash2, FileVideo, ImageIcon, Plus, Music, Volume2, Focus, Ban } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 
 const DEFAULT_SCRIPT = "In the heart of an ancient forest, sunlight filters through the dense canopy. A gentle stream winds its way over mossy rocks, singing a quiet song. Suddenly, a majestic deer steps into the clearing, ears twitching at the sound of the wind. Nature pauses, holding its breath in a moment of perfect tranquility.";
@@ -38,10 +38,13 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [status, setStatus] = useState<GenerationStatus>({ step: 'idle' });
   const [scenes, setScenes] = useState<Scene[]>([]);
   
+  // Controls
+  const [isManualMode, setIsManualMode] = useState(false); // Toggle State
+
   // Music State
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
   const [musicFile, setMusicFile] = useState<File | null>(null);
-  const [musicVolume, setMusicVolume] = useState<number>(0.15); // Default 15%
+  const [musicVolume, setMusicVolume] = useState<number>(0.15);
 
   // Visuals State
   const [customUploads, setCustomUploads] = useState<UploadedFile[]>([]);
@@ -70,6 +73,10 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
   const updateConfig = (newConfig: AppConfig) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
+  };
+
+  const handleUpdateConfigField = (field: keyof AppConfig, value: string) => {
+      setConfig(prev => ({ ...prev, [field]: value }));
   };
 
   // --- HANDLERS ---
@@ -125,16 +132,23 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
     try {
       setScenes([]);
-      // Only reset music if user hasn't uploaded one
-      if (!musicFile) setBackgroundMusicUrl(null);
+      // Reset music logic: if not uploaded, clear it so we can re-fetch or leave empty
+      if (!musicFile && isManualMode) {
+          // In Manual Mode, if no music uploaded, user might want silence or they forgot. 
+          // We'll leave it empty (silence) as per "manual" control implies.
+          setBackgroundMusicUrl(null);
+      } else if (!musicFile && !isManualMode) {
+           setBackgroundMusicUrl(null); // Will auto-fetch below
+      }
+
       usedMediaUrlsRef.current = new Set();
       
       setStatus({ step: 'analyzing', message: 'Analyzing script & creating storyboard...' });
       
       const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject);
       
-      // Auto-fetch music if no file uploaded
-      if (!musicFile) {
+      // Auto-fetch music ONLY in Auto Mode (isManualMode = false) if no file uploaded
+      if (!isManualMode && !musicFile) {
           const mood = config.visualSubject || 'cinematic ambient';
           fetchPixabayAudio(config.pixabayApiKey, mood).then(url => {
               if (url) setBackgroundMusicUrl(url);
@@ -151,13 +165,13 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         let mediaUrl: string | undefined;
         let mediaType = scene.mediaType;
 
-        // 1. Check Custom Visual Uploads
-        if (i < customUploads.length) {
-            setStatus({ step: 'fetching_media', message: `Assigning visual file ${i + 1}...` });
+        // LOGIC: If Manual Mode, try Custom Uploads. If Auto Mode, force Stock.
+        if (isManualMode && i < customUploads.length) {
+            setStatus({ step: 'fetching_media', message: `Assigning custom media to Scene ${i + 1}...` });
             mediaUrl = customUploads[i].previewUrl;
             mediaType = customUploads[i].type;
         } else {
-            // 2. Fetch Stock
+            // Fetch Stock (Used in Auto Mode OR if Manual Mode runs out of files)
             setStatus({ step: 'fetching_media', message: `Searching stock media for Scene ${i + 1}...` });
             let result = await getStockMediaForScene(scene.visualSearchTerm, mediaType, usedMediaUrlsRef.current);
             if (!result.url && mediaType === 'video') {
@@ -209,7 +223,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
   };
 
-  // Scene manipulation handlers...
   const handleRegenerateScene = async (sceneId: string) => {
       const sceneIndex = scenes.findIndex(s => s.id === sceneId);
       if (sceneIndex === -1) return;
@@ -272,7 +285,21 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           {/* COLUMN 2: Config & Media */}
           <div className="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-1">
             
-            {/* Generate Button (Moved to Top) */}
+            {/* 1. TOGGLE (Top of Col 2) */}
+            <div className="bg-[#11141b] border border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-lg">
+                 <span className="text-sm font-bold text-zinc-100">Manual Media Mode</span>
+                 <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={isManualMode}
+                        onChange={(e) => setIsManualMode(e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                </label>
+            </div>
+
+            {/* 2. GENERATE BUTTON */}
             <button 
                 onClick={handleGenerate}
                 disabled={isGenerating || !script.trim()}
@@ -285,94 +312,127 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                 )}
             </button>
 
-            {/* Visual Media Library */}
-            <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg flex-1 min-h-[250px] flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-white font-semibold text-sm">2. Your Visual Media</h2>
-                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Files</span>
-                        <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleAddVisualUpload} />
-                    </label>
-                </div>
+            {/* 3. CONDITIONAL CONTENT */}
+            {isManualMode ? (
+                // --- MANUAL MODE: Visual Uploads & Music Uploads ---
+                <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                     {/* Visual Media Library */}
+                    <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg flex-1 min-h-[200px] flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-white font-semibold text-sm">Your Visual Media</h2>
+                            <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors">
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add Files</span>
+                                <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleAddVisualUpload} />
+                            </label>
+                        </div>
 
-                <div className="flex-1 bg-[#0b0e14] border border-zinc-800 rounded-xl p-3 overflow-y-auto custom-scrollbar">
-                    {customUploads.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-zinc-600 text-center p-4 border border-dashed border-zinc-800 rounded-lg">
-                            <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
-                            <p className="text-xs">Drag & drop images or videos.</p>
-                            <p className="text-[10px] mt-1 opacity-50">Used sequentially for each scene.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {customUploads.map((upload, idx) => (
-                                <div key={upload.id} className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800">
-                                    <div className="w-10 h-10 shrink-0 bg-black rounded overflow-hidden relative">
-                                        {upload.type === 'video' ? <video src={upload.previewUrl} className="w-full h-full object-cover" /> : <img src={upload.previewUrl} className="w-full h-full object-cover" alt="" />}
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                            {upload.type === 'video' ? <FileVideo className="w-3 h-3 text-white" /> : <ImageIcon className="w-3 h-3 text-white" />}
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-zinc-300 truncate">{upload.file.name}</p>
-                                        <p className="text-[10px] text-zinc-500">Scene {idx + 1}</p>
-                                    </div>
-                                    <button onClick={() => removeVisualUpload(upload.id)} className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <div className="flex-1 bg-[#0b0e14] border border-zinc-800 rounded-xl p-3 overflow-y-auto custom-scrollbar max-h-[300px]">
+                            {customUploads.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-zinc-600 text-center p-4 border border-dashed border-zinc-800 rounded-lg min-h-[100px]">
+                                    <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                                    <p className="text-xs">Drag & drop images or videos.</p>
+                                    <p className="text-[10px] mt-1 opacity-50">Used sequentially.</p>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-            
-            {/* Background Music Section */}
-            <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                     <div className="flex items-center gap-2">
-                         <Music className="w-4 h-4 text-indigo-400" />
-                         <h2 className="text-white font-semibold text-sm">Background Music</h2>
-                     </div>
-                     {musicFile && (
-                         <button onClick={() => { setMusicFile(null); setBackgroundMusicUrl(null); }} className="text-xs text-red-400 hover:text-red-300 hover:underline">Remove</button>
-                     )}
-                </div>
-                
-                <div className="flex flex-col gap-4">
-                    <label className={`flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${musicFile ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-zinc-700 hover:border-zinc-500 bg-[#0b0e14]'}`}>
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            {musicFile ? (
-                                <>
-                                    <Music className="w-6 h-6 text-indigo-400 mb-1" />
-                                    <p className="text-xs text-indigo-200 truncate max-w-[200px]">{musicFile.name}</p>
-                                </>
                             ) : (
-                                <>
-                                    <Upload className="w-6 h-6 text-zinc-500 mb-1" />
-                                    <p className="text-xs text-zinc-400">Click to upload MP3</p>
-                                </>
+                                <div className="space-y-2">
+                                    {customUploads.map((upload, idx) => (
+                                        <div key={upload.id} className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800">
+                                            <div className="w-10 h-10 shrink-0 bg-black rounded overflow-hidden relative">
+                                                {upload.type === 'video' ? <video src={upload.previewUrl} className="w-full h-full object-cover" /> : <img src={upload.previewUrl} className="w-full h-full object-cover" alt="" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs text-zinc-300 truncate">{upload.file.name}</p>
+                                                <p className="text-[10px] text-zinc-500">Scene {idx + 1}</p>
+                                            </div>
+                                            <button onClick={() => removeVisualUpload(upload.id)} className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
                         </div>
-                        <input type="file" accept="audio/mp3,audio/mpeg" className="hidden" onChange={handleMusicUpload} />
-                    </label>
+                    </div>
                     
-                    {/* Volume Slider */}
-                    <div className="flex items-center gap-3">
-                        <Volume2 className="w-4 h-4 text-zinc-500" />
-                        <input 
-                            type="range" 
-                            min="0" 
-                            max="1" 
-                            step="0.05" 
-                            value={musicVolume} 
-                            onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                            className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                        />
-                        <span className="text-xs text-zinc-500 w-8 text-right">{Math.round(musicVolume * 100)}%</span>
+                    {/* Background Music Section */}
+                    <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Music className="w-4 h-4 text-indigo-400" />
+                                <h2 className="text-white font-semibold text-sm">Background Music</h2>
+                            </div>
+                            {musicFile && (
+                                <button onClick={() => { setMusicFile(null); setBackgroundMusicUrl(null); }} className="text-xs text-red-400 hover:text-red-300 hover:underline">Remove</button>
+                            )}
+                        </div>
+                        
+                        <div className="flex flex-col gap-4">
+                            <label className={`flex flex-col items-center justify-center w-full h-16 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${musicFile ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-zinc-700 hover:border-zinc-500 bg-[#0b0e14]'}`}>
+                                <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                                    {musicFile ? (
+                                        <p className="text-xs text-indigo-200 truncate max-w-[200px]">{musicFile.name}</p>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-4 h-4 text-zinc-500 mb-1" />
+                                            <p className="text-[10px] text-zinc-400">Click to upload MP3</p>
+                                        </>
+                                    )}
+                                </div>
+                                <input type="file" accept="audio/mp3,audio/mpeg" className="hidden" onChange={handleMusicUpload} />
+                            </label>
+                            
+                            <div className="flex items-center gap-3">
+                                <Volume2 className="w-4 h-4 text-zinc-500" />
+                                <input 
+                                    type="range" min="0" max="1" step="0.05" value={musicVolume} 
+                                    onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                // --- AUTO MODE: Visual Prompts ---
+                <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center gap-2 mb-4 text-zinc-100 font-semibold">
+                         <Focus className="w-4 h-4 text-indigo-400" />
+                         <h2>Visual Settings</h2>
+                    </div>
 
-            {/* Settings (Bottom of Col 2) */}
+                    <div className="space-y-5">
+                        <div>
+                            <label className="block text-xs font-medium text-zinc-400 mb-2">
+                                Main Visual Subject
+                            </label>
+                            <input
+                                type="text"
+                                value={config.visualSubject || ''}
+                                onChange={(e) => handleUpdateConfigField('visualSubject', e.target.value)}
+                                placeholder="e.g. Cyberpunk City"
+                                className="w-full bg-[#0b0e14] border border-zinc-800 rounded-lg py-2.5 px-4 text-sm text-zinc-200 focus:ring-1 focus:ring-cyan-500 outline-none placeholder:text-zinc-600"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-medium text-zinc-400 mb-2">
+                                Negative Prompts
+                            </label>
+                            <div className="relative">
+                                <Ban className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
+                                <input
+                                    type="text"
+                                    value={config.negativePrompt || ''}
+                                    onChange={(e) => handleUpdateConfigField('negativePrompt', e.target.value)}
+                                    placeholder="e.g. text, blurry"
+                                    className="w-full bg-[#0b0e14] border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm text-zinc-200 focus:ring-1 focus:ring-cyan-500 outline-none placeholder:text-zinc-600"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 4. Global Settings (Always Visible) */}
             <SettingsPanel config={config} onConfigChange={updateConfig} />
           </div>
 
