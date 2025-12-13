@@ -38,7 +38,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   
   const requestRef = useRef<number>(0);
   
-  // Mutable state refs
   const stateRef = useRef({
     currentSceneIndex: 0,
     sceneStartTimestamp: 0,
@@ -48,7 +47,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     showCaptions: true
   });
 
-  // Sync state refs
   useEffect(() => {
     stateRef.current.currentSceneIndex = currentSceneIndex;
     stateRef.current.isPlaying = isPlaying;
@@ -57,17 +55,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     stateRef.current.showCaptions = showCaptions;
   }, [currentSceneIndex, isPlaying, isExporting, orientation, showCaptions]);
 
-  // Update Music Volume
   useEffect(() => {
-    if (bgMusicGainRef.current) {
-        const currentTime = audioContextRef.current?.currentTime || 0;
+    if (bgMusicGainRef.current && audioContextRef.current) {
+        const currentTime = audioContextRef.current.currentTime;
         bgMusicGainRef.current.gain.cancelScheduledValues(currentTime);
         bgMusicGainRef.current.gain.setValueAtTime(bgMusicGainRef.current.gain.value, currentTime);
         bgMusicGainRef.current.gain.linearRampToValueAtTime(musicVolume, currentTime + 0.1);
     }
   }, [musicVolume]);
 
-  // Assets
   const assetsRef = useRef<{
     images: Record<string, HTMLImageElement>;
     videos: Record<string, HTMLVideoElement>;
@@ -78,17 +74,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const width = isLandscape ? 1280 : 720;
   const height = isLandscape ? 720 : 1280;
 
-  // --- INITIALIZATION ---
   useEffect(() => {
-    // Stop loops/playback
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
     if (narrationSourceRef.current) { try { narrationSourceRef.current.stop(); } catch(e){} }
     if (bgMusicElementRef.current) { bgMusicElementRef.current.pause(); }
-    
-    // Clear video container
     if (videoContainerRef.current) videoContainerRef.current.innerHTML = '';
 
-    // Reset state
     setIsPlaying(false);
     if (currentSceneIndex >= scenes.length) {
         setCurrentSceneIndex(0);
@@ -117,7 +108,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
              audioContextRef.current = new AudioContextClass();
         }
         
-        // --- LOAD SCENE ASSETS ---
         const images: Record<string, HTMLImageElement> = {};
         const videos: Record<string, HTMLVideoElement> = {};
         const audioBuffers: Record<string, AudioBuffer> = {};
@@ -126,7 +116,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const total = scenes.length * 2; 
 
         for (const scene of scenes) {
-          // 1. Load Audio
           if (scene.audioData) {
             try {
               const wavBlob = pcm16ToWav(scene.audioData);
@@ -135,7 +124,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               audioBuffers[scene.id] = audioBuffer;
               scene.duration = audioBuffer.duration;
             } catch (e) {
-              console.warn(`Audio decode failed for scene ${scene.id}`, e);
               scene.duration = Math.max(3, scene.narration.length / 15);
             }
           } else {
@@ -144,41 +132,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           loadedCount++;
           setLoadingProgress(Math.round((loadedCount / total) * 100));
 
-          // 2. Load Visual
           if (scene.mediaUrl) {
             if (scene.mediaType === 'video') {
                 const vid = document.createElement('video');
-                
-                // Only apply crossOrigin for remote URLs. Local blobs fail with this set.
                 if (scene.mediaUrl.startsWith('http')) {
                   vid.crossOrigin = "anonymous";
                 }
-                
                 vid.src = scene.mediaUrl;
                 vid.muted = true;
                 vid.loop = true;
                 vid.playsInline = true;
                 vid.preload = 'auto'; 
-                vid.style.display = 'none'; // Mount hidden
-                
+                vid.style.display = 'none'; 
                 if (videoContainerRef.current) videoContainerRef.current.appendChild(vid);
-                
-                // Force load for local blobs to ensure they are ready
                 vid.load();
 
                 await new Promise((resolve) => {
                     const onReady = () => resolve(true);
-                    
                     vid.onloadedmetadata = onReady;
                     vid.onloadeddata = onReady;
                     vid.oncanplay = onReady;
-                    
-                    vid.onerror = (e) => {
-                        console.warn(`Video load failed for ${scene.mediaUrl}`, e);
-                        resolve(null);
-                    };
-                    
-                    // Slightly shorter timeout to not block UI forever
+                    vid.onerror = (e) => resolve(null);
                     setTimeout(() => resolve(null), 3000);
                 });
                 videos[scene.id] = vid;
@@ -190,10 +164,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 img.src = scene.mediaUrl;
                 await new Promise((resolve) => {
                     img.onload = resolve;
-                    img.onerror = () => {
-                        console.warn(`Image load failed: ${scene.mediaUrl}`);
-                        resolve(null);
-                    };
+                    img.onerror = () => resolve(null);
                 });
                 images[scene.id] = img;
             }
@@ -202,7 +173,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           setLoadingProgress(Math.round((loadedCount / total) * 100));
         }
 
-        // --- LOAD BACKGROUND MUSIC ---
         if (backgroundMusicUrl) {
             const audio = new Audio();
             if (backgroundMusicUrl.startsWith('http')) {
@@ -211,28 +181,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             audio.src = backgroundMusicUrl;
             audio.loop = true;
             bgMusicElementRef.current = audio;
-            
             await new Promise((resolve) => {
                 audio.onloadedmetadata = resolve;
-                audio.onerror = () => {
-                    console.warn("Failed to load background music");
-                    resolve(null);
-                };
+                audio.onerror = () => resolve(null);
             });
 
             if (audioContextRef.current) {
                 try {
                     const source = audioContextRef.current.createMediaElementSource(audio);
                     const gain = audioContextRef.current.createGain();
-                    gain.gain.value = musicVolume; // Use prop volume
+                    gain.gain.value = musicVolume;
                     source.connect(gain);
                     gain.connect(audioContextRef.current.destination);
-                    
                     bgMusicSourceRef.current = source;
                     bgMusicGainRef.current = gain;
-                } catch(e) {
-                    // Suppress error if source already connected (React Hot Reload issue)
-                }
+                } catch(e) {}
             }
         } else {
             bgMusicElementRef.current = null;
@@ -241,13 +204,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         assetsRef.current = { images, videos, audioBuffers };
         setIsReady(true);
       } catch (err) {
-        console.error("Initialization error:", err);
         setError("Failed to load media assets.");
       }
     };
-
     init();
-
     return () => {
         if (requestRef.current) cancelAnimationFrame(requestRef.current);
         if (narrationSourceRef.current) try { narrationSourceRef.current.stop(); } catch(e) {}
@@ -255,7 +215,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [scenes, backgroundMusicUrl]);
 
-  // --- PLAYBACK HELPERS ---
   const stopSceneMedia = useCallback(() => {
      Object.values(assetsRef.current.videos).forEach((v) => {
          const videoEl = v as HTMLVideoElement;
@@ -274,30 +233,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const scene = scenes[index];
     if (!scene) return;
 
-    // Play Video
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
         vid.currentTime = 0;
-        vid.play().catch(e => console.warn("Video play failed (interrupted):", e));
+        vid.play().catch(e => console.warn("Interrupted", e));
     }
 
-    // Play Narration
     if (assetsRef.current.audioBuffers[scene.id]) {
         const source = audioContextRef.current.createBufferSource();
         source.buffer = assetsRef.current.audioBuffers[scene.id];
-        
         if (destination) {
             source.connect(destination);
         } else {
             source.connect(audioContextRef.current.destination);
         }
-        
         source.start(0);
         narrationSourceRef.current = source;
     }
   }, [scenes, stopSceneMedia]);
 
-  // --- MAIN LOOP ---
   const drawScene = useCallback((timestamp: number, exportDest?: MediaStreamAudioDestinationNode) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -322,15 +276,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const duration = scene.duration || 3;
     const progress = Math.min(elapsedTime / duration, 1);
 
-    // Render Logic
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
         const vid = assetsRef.current.videos[scene.id];
-        
-        // Relaxed check: readyState >= 1 ensures we have metadata/first frame.
-        // We do NOT wait for readyState 4 for local blobs as it can be flaky.
         if (vid.readyState >= 1) {
              const scale = Math.max(canvas.width / vid.videoWidth, canvas.height / vid.videoHeight);
              const x = (canvas.width - vid.videoWidth * scale) / 2;
@@ -346,7 +296,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
     }
 
-    // Captions
     if (showCaptions) {
         const overlayHeight = isLandscape ? 120 : 200;
         const gradient = ctx.createLinearGradient(0, canvas.height - overlayHeight, 0, canvas.height);
@@ -381,13 +330,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         lines.push(line);
         const lineHeight = isLandscape ? 40 : 50;
         const textBottomMargin = isLandscape ? 40 : 80;
-        
         lines.reverse().forEach((l, i) => {
            ctx.fillText(l, canvas.width / 2, canvas.height - textBottomMargin - (i * lineHeight));
         });
     }
 
-    // Transition Logic
     if (elapsedTime >= duration) {
         if (scene.mediaType === 'video' && assetsRef.current.videos[scene.id]) {
              assetsRef.current.videos[scene.id].pause();
@@ -409,7 +356,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 bgMusicElementRef.current.pause();
                 bgMusicElementRef.current.currentTime = 0;
             }
-            
             if (isExporting && (window as any).mediaRecorder?.state === 'recording') {
                 (window as any).mediaRecorder.stop();
             }
@@ -422,8 +368,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [scenes, isLandscape, playSceneMedia, stopSceneMedia, showCaptions]);
 
-
-  // --- USER ACTIONS ---
   const togglePlay = async () => {
     if (isPlaying) {
       setIsPlaying(false);
@@ -431,29 +375,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       stopSceneMedia();
       if (bgMusicElementRef.current) bgMusicElementRef.current.pause();
-
     } else {
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
           await audioContextRef.current.resume();
       }
-      
       if (bgMusicElementRef.current) {
           bgMusicElementRef.current.play().catch(e => console.warn("BG Music play failed:", e));
       }
-      
       setIsPlaying(true);
       stateRef.current.isPlaying = true;
       if (!requestRef.current) {
           stateRef.current.sceneStartTimestamp = 0;
       }
-      
       requestRef.current = requestAnimationFrame((t) => drawScene(t));
     }
   };
 
   const handleExport = async () => {
      if (!canvasRef.current || !audioContextRef.current) return;
-     
      stopSceneMedia();
      setIsExporting(true);
      setIsPlaying(true); 
@@ -484,19 +423,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         stream.addTrack(dest.stream.getAudioTracks()[0]);
      }
 
+     // EXPORT FORMAT LOGIC
+     // Prefer mp4 if supported, else webm
+     let mimeType = 'video/webm;codecs=vp9,opus'; // Default
+     if (MediaRecorder.isTypeSupported('video/mp4')) {
+         mimeType = 'video/mp4';
+     }
+
      const recorder = new MediaRecorder(stream, { 
-        mimeType: 'video/webm;codecs=vp9,opus',
+        mimeType: mimeType,
         videoBitsPerSecond: 8000000 
      });
      
      const chunks: Blob[] = [];
      recorder.ondataavailable = (e) => { if(e.data.size > 0) chunks.push(e.data); };
      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
+        const blob = new Blob(chunks, { type: mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `ai-story-${Date.now()}.webm`;
+        // Extension determination
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'mp4'; // Forcing .mp4 naming for user convenience even if webm (VLC handles it)
+        a.download = `ai-story-${Date.now()}.${ext}`;
         a.click();
         URL.revokeObjectURL(url);
         
@@ -519,14 +467,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   
   const skip = (direction: 'next' | 'prev') => {
      stopSceneMedia();
-     const newIndex = direction === 'next' 
-        ? Math.min(currentSceneIndex + 1, scenes.length - 1)
-        : Math.max(currentSceneIndex - 1, 0);
-        
+     const newIndex = direction === 'next' ? Math.min(currentSceneIndex + 1, scenes.length - 1) : Math.max(currentSceneIndex - 1, 0);
      setCurrentSceneIndex(newIndex);
      stateRef.current.currentSceneIndex = newIndex;
      stateRef.current.sceneStartTimestamp = 0;
-     
      if (isPlaying) {
          stateRef.current.sceneStartTimestamp = 0;
      }
@@ -557,10 +501,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   if (error) {
      return (
         <div className="w-full h-full bg-red-950/20 border border-red-900/50 rounded-xl flex items-center justify-center text-red-400">
-            <div className="text-center">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-                <p>{error}</p>
-            </div>
+            <div className="text-center"><AlertCircle className="w-8 h-8 mx-auto mb-2" /><p>{error}</p></div>
         </div>
      );
   }
@@ -569,12 +510,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <div className="flex flex-col gap-4 w-full h-full">
       <div ref={videoContainerRef} hidden></div>
       <div className={`relative rounded-xl overflow-hidden shadow-2xl bg-black mx-auto transition-all duration-500 flex-1 w-full flex items-center justify-center bg-[#000] border border-zinc-900`}>
-        <canvas 
-          ref={canvasRef}
-          width={width}
-          height={height}
-          className="max-w-full max-h-full object-contain shadow-2xl"
-        />
+        <canvas ref={canvasRef} width={width} height={height} className="max-w-full max-h-full object-contain shadow-2xl" />
         {isExporting && (
           <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
              <div className="text-center text-white p-6 bg-zinc-900 rounded-2xl border border-zinc-800 shadow-xl">
@@ -588,45 +524,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       <div className="flex flex-col gap-3 w-full">
          <div className="flex items-center gap-1 h-1 w-full mb-1">
-             {scenes.map((_, idx) => (
-                 <div key={idx} className={`h-full rounded-full transition-colors flex-1 ${idx < currentSceneIndex ? 'bg-cyan-500' : idx === currentSceneIndex ? 'bg-white' : 'bg-zinc-800'}`} />
-             ))}
+             {scenes.map((_, idx) => <div key={idx} className={`h-full rounded-full transition-colors flex-1 ${idx < currentSceneIndex ? 'bg-cyan-500' : idx === currentSceneIndex ? 'bg-white' : 'bg-zinc-800'}`} />)}
          </div>
          <div className="flex items-center justify-between bg-[#11141b] border border-zinc-800 rounded-xl p-2 shadow-lg">
             <div className="flex items-center gap-1">
-                <button onClick={() => skip('prev')} disabled={isExporting} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-all disabled:opacity-50">
-                   <SkipBack className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={togglePlay} 
-                  disabled={isExporting}
-                  className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all active:scale-95 disabled:opacity-50 ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-cyan-600 text-black shadow-lg shadow-cyan-900/20 hover:bg-cyan-500'}`}
-                >
+                <button onClick={() => skip('prev')} disabled={isExporting} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-all disabled:opacity-50"><SkipBack className="w-4 h-4" /></button>
+                <button onClick={togglePlay} disabled={isExporting} className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all active:scale-95 disabled:opacity-50 ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-cyan-600 text-black shadow-lg shadow-cyan-900/20 hover:bg-cyan-500'}`}>
                   {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                 </button>
-                <button onClick={() => skip('next')} disabled={isExporting} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-all disabled:opacity-50">
-                   <SkipForward className="w-4 h-4" />
-                </button>
-
+                <button onClick={() => skip('next')} disabled={isExporting} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-all disabled:opacity-50"><SkipForward className="w-4 h-4" /></button>
                 <div className="h-6 w-px bg-zinc-800 mx-2"></div>
-
-                <button 
-                   onClick={() => setShowCaptions(!showCaptions)} 
-                   disabled={isExporting}
-                   title="Toggle Captions"
-                   className={`p-2 rounded-lg transition-all disabled:opacity-50 ${showCaptions ? 'text-cyan-400 bg-cyan-500/10' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}
-                >
+                <button onClick={() => setShowCaptions(!showCaptions)} disabled={isExporting} title="Toggle Captions" className={`p-2 rounded-lg transition-all disabled:opacity-50 ${showCaptions ? 'text-cyan-400 bg-cyan-500/10' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}>
                    {showCaptions ? <Captions className="w-4 h-4" /> : <CaptionsOff className="w-4 h-4" />}
                 </button>
             </div>
             
-            <button 
-              onClick={handleExport}
-              disabled={isExporting || scenes.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-100 hover:bg-white text-zinc-900 text-xs font-bold rounded-lg transition-all disabled:opacity-50 disabled:bg-zinc-800 disabled:text-zinc-600"
-            >
+            <button onClick={handleExport} disabled={isExporting || scenes.length === 0} className="flex items-center gap-2 px-4 py-2 bg-zinc-100 hover:bg-white text-zinc-900 text-xs font-bold rounded-lg transition-all disabled:opacity-50 disabled:bg-zinc-800 disabled:text-zinc-600">
               {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+              <span>{isExporting ? 'Exporting...' : 'Export MP4'}</span>
             </button>
          </div>
       </div>
