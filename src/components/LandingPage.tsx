@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Play, Sparkles, Zap, Star, Monitor, Smartphone, Youtube, Video } from 'lucide-react';
 import { Page } from '../types';
 
@@ -127,23 +127,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
             <div>
               <h4 className="text-white font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-zinc-400">
-                <li><a href="/generator" className="hover:text-white transition-colors">Video Generator</a></li>
-                <li><a href="/pricing" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="/#features" className="hover:text-white transition-colors">Features</a></li>
+                <li><Link to="/generator" className="hover:text-white transition-colors">Video Generator</Link></li>
+                <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+                <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-zinc-400">
                 <li><a href="mailto:contact@aivideonarrator.com" className="hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="/refund" className="hover:text-white transition-colors">Refund Policy</a></li>
+                <li><Link to="/refund" className="hover:text-white transition-colors">Refund Policy</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-zinc-400">
-                <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
               </ul>
             </div>
             <div>
