@@ -120,6 +120,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
         </div>
       </section>
 
+      {/* FAQ SECTION */}
+      <section className="py-16 bg-zinc-900">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="bg-zinc-800 p-6 rounded-xl">
+              <h3 className="text-white font-semibold mb-2">What is AI video generation?</h3>
+              <p className="text-zinc-400">AI video generation converts text scripts into narrated videos automatically using artificial intelligence.</p>
+            </div>
+            <div className="bg-zinc-800 p-6 rounded-xl">
+              <h3 className="text-white font-semibold mb-2">Can I use this for YouTube Shorts?</h3>
+              <p className="text-zinc-400">Yes, export in 9:16 format perfect for YouTube Shorts, TikTok and Instagram Reels.</p>
+            </div>
+            <div className="bg-zinc-800 p-6 rounded-xl">
+              <h3 className="text-white font-semibold mb-2">Do I need video editing experience?</h3>
+              <p className="text-zinc-400">No experience needed. Just paste text and get professional videos instantly.</p>
+            </div>
+            <div className="bg-zinc-800 p-6 rounded-xl">
+              <h3 className="text-white font-semibold mb-2">Is there a free plan?</h3>
+              <p className="text-zinc-400">Yes, get 5 videos per day completely free. Upgrade to Pro for unlimited videos.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer className="bg-[#080a0f] border-t border-zinc-900/50 py-12 px-6">
         <div className="max-w-7xl mx-auto">
