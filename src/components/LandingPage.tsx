@@ -119,6 +119,47 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
           </div>
         </div>
       </section>
+
+      {/* FOOTER */}
+      <footer className="bg-[#080a0f] border-t border-zinc-900/50 py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h4 className="text-white font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><a href="/generator" className="hover:text-white transition-colors">Video Generator</a></li>
+                <li><a href="/pricing" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><a href="/#features" className="hover:text-white transition-colors">Features</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Support</h4>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><a href="mailto:contact@aivideonarrator.com" className="hover:text-white transition-colors">Contact Us</a></li>
+                <li><a href="/refund" className="hover:text-white transition-colors">Refund Policy</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
+                <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Connect</h4>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><a href="https://kimbosaurus.gumroad.com/l/AIVideoNarrator" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Get Lifetime License</a></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-zinc-800 pt-8 text-center text-sm text-zinc-500">
+            <p>© 2025 AI Video Narrator. All rights reserved.</p>
+            <p className="mt-2">Made with ❤️ for creators worldwide</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
