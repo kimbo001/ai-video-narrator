@@ -1,7 +1,5 @@
 User-agent: *
 Allow: /
-
-# Sitemap location
 Sitemap: https://aivideonarrator.com/sitemap.xml
 
 # Block admin/cpanel access (security)
