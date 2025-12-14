@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowLeft, useNavigate } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface LegalProps {
   page: 'terms' | 'privacy' | 'refund';

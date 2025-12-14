@@ -61,7 +61,9 @@ const App: React.FC = () => (
         />
         <Route path="/generator" element={<Generator onBack={() => window.history.back()} />} />
         <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
-        <Route path="/legal" element={<Legal onBack={() => window.history.back()} />} />
+        <Route path="/terms" element={<Legal page="terms" />} />
+        <Route path="/privacy" element={<Legal page="privacy" />} />
+        <Route path="/refund" element={<Legal page="refund" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
