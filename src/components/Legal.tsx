@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 
@@ -18,53 +17,44 @@ const Legal: React.FC<LegalProps> = ({ onBack }) => {
       </button>
 
       <div className="space-y-12">
+        {/* TERMS & CONDITIONS */}
         <section>
           <h1 className="text-3xl font-bold text-white mb-6">Terms of Service</h1>
-          <p className="mb-4">Last Updated: October 26, 2023</p>
-          <p className="mb-4">
-            Welcome to AI Video Narrator. By accessing or using our website and services, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service.
-          </p>
-          <h3 className="text-xl font-semibold text-white mt-6 mb-3">1. Use License</h3>
-          <p className="mb-4">
-            Permission is granted to temporarily download one copy of the materials (information or software) on AI Video Narrator's website for personal, non-commercial transitory viewing only.
-          </p>
-          <h3 className="text-xl font-semibold text-white mt-6 mb-3">2. AI Usage</h3>
-          <p>
-            Our service utilizes Google Gemini and other third-party APIs. You agree not to use the service to generate harmful, illegal, or offensive content.
-          </p>
+          <p className="mb-4">Last Updated: December 2025</p>
+          
+          <h3 className="text-xl font-semibold text-white mt-6 mb-3">1. Services</h3>
+          <p className="mb-4">AI Video Narrator provides AI-powered video generation tools that convert text to narrated videos with stock footage.</p>
+          
+          <h3 className="text-xl font-semibold text-white mt-6 mb-3">2. Payment & Subscription</h3>
+          <p className="mb-4">Monthly subscriptions auto-renew unless cancelled. Lifetime purchases are one-time payments with no recurring fees.</p>
+          
+          <h3 className="text-xl font-semibold text-white mt-6 mb-3">3. Refunds</h3>
+          <p className="mb-4">14-day refund policy for unused subscriptions. No refunds after service usage.</p>
+          
+          <h3 className="text-xl font-semibold text-white mt-6 mb-3">4. Content Rights</h3>
+          <p className="mb-4">Users retain ownership of their scripts. We provide royalty-free stock footage and AI-generated voiceovers.</p>
+          
+          <h3 className="text-xl font-semibold text-white mt-6 mb-3">5. Acceptable Use</h3>
+          <p>No illegal content, spam, or copyright infringement.</p>
+          
+          <p className="mt-6"><strong>Company:</strong> AI Video Narrator</p>
+          <p><strong>Contact:</strong> contact@aivideonarrator.com</p>
         </section>
 
+        {/* PRIVACY POLICY */}
         <section className="pt-8 border-t border-zinc-800">
           <h1 className="text-3xl font-bold text-white mb-6">Privacy Policy</h1>
-          <p className="mb-4">
-            Your privacy is important to us. It is AI Video Narrator's policy to respect your privacy regarding any information we may collect from you across our website.
-          </p>
-          <h3 className="text-xl font-semibold text-white mt-6 mb-3">Data Collection</h3>
-          <p className="mb-4">
-            We do not store the scripts or videos you generate on our servers permanently. Processing is done in real-time. We may collect basic usage analytics to improve our service.
-          </p>
-          <h3 className="text-xl font-semibold text-white mt-6 mb-3">Third Party Services</h3>
-          <p>
-            We use third-party services for image generation and text-to-speech. Please review the privacy policies of Google (Gemini), Pixabay, Pexels, and Unsplash.
-          </p>
+          <p className="mb-4">We collect email address (account creation), payment info (processed by Paddle), and generated video content (temporarily stored).</p>
+          <p className="mb-4">We don't sell your data. Videos are deleted after 30 days.</p>
+          <p><strong>Contact:</strong> contact@aivideonarrator.com for data deletion requests.</p>
         </section>
 
+        {/* REFUND POLICY */}
         <section className="pt-8 border-t border-zinc-800">
           <h1 className="text-3xl font-bold text-white mb-6">Refund Policy</h1>
-          <p className="mb-4">
-            We want you to be completely satisfied with our service.
-          </p>
-          <ul className="list-disc pl-5 space-y-2 mb-4">
-            <li>
-              <strong className="text-white">7-Day Money-Back Guarantee:</strong> If you are not satisfied with your Pro or Lifetime purchase, contact us within 7 days of your transaction for a full refund.
-            </li>
-            <li>
-              <strong className="text-white">Cancellation:</strong> You can cancel your monthly subscription at any time. Your access will continue until the end of the billing period.
-            </li>
-          </ul>
-          <p>
-            To request a refund, please contact our support team at support@aivideonarrator.com with your order details.
-          </p>
+          <p className="mb-4">14-day money-back guarantee for unused subscriptions.</p>
+          <p className="mb-4">No refunds after video generation, account usage, or download of generated content.</p>
+          <p><strong>Contact:</strong> contact@aivideonarrator.com for refund requests.</p>
         </section>
       </div>
     </div>
