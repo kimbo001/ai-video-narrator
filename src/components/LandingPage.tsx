@@ -21,14 +21,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate }) => {
           <div className="flex justify-center mb-8">
              <div className="relative">
                 <div className="absolute -inset-4 bg-cyan-500/20 rounded-full blur-xl animate-pulse"></div>
-                <img src="/logo.png" alt="AI Video Narrator Logo" className="w-24 h-24 object-contain relative z-10" />
+                <img src="/logo.png" alt="AI Video Narrator - Text to Video AI Generator" className="w-24 h-24 object-contain relative z-10" loading="lazy" />
              </div>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
-  Ultimate AI Short <br />
-  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Creator and Narrator</span>
-</h1>
+            AI Video Narrator - Create Viral Videos in Seconds<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">Ultimate AI Short Creator</span>
+          </h1>
           
           <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             Create professional, narrated videos for <strong>TikTok, YouTube Shorts, and Reels</strong> in seconds. 
