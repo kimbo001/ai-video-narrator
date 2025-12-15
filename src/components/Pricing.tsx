@@ -1,17 +1,17 @@
 // src/components/Pricing.tsx
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Check, ArrowLeft, Star, Zap, Play, Video, Clock, Users } from 'lucide-react';
-import PaddleButton from './PaddleButton'; // ← live checkout
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
+import PaddleButton from './PaddleButton'; // live checkout
 
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
 
-  // ----  current user placeholders – replace with your auth context  ----
+  /*  TODO: replace with real auth context  */
   const userId   = 'user-id-placeholder'; // ← real id from auth
   const userEmail = 'user@example.com';   // ← real email from auth
 
-  // ----  price IDs from env  ----
+  /*  Paddle price IDs (guaranteed to exist)  */
   const priceIds = {
     'New Tuber': import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER as string,
     Creator:     import.meta.env.VITE_PADDLE_PRICE_CREATOR as string,
@@ -35,7 +35,7 @@ const Pricing: React.FC = () => {
       ],
       cta: 'Start Creating Free',
       popular: false,
-      disabled: false,
+      isFree: true,
     },
     {
       name: 'New Tuber',
@@ -55,7 +55,7 @@ const Pricing: React.FC = () => {
       ],
       cta: 'Start New Tuber',
       popular: true,
-      disabled: false, // ← live now
+      isFree: false,
     },
     {
       name: 'Creator',
@@ -77,7 +77,7 @@ const Pricing: React.FC = () => {
       ],
       cta: 'Start Creator',
       popular: false,
-      disabled: false, // ← live now
+      isFree: false,
     },
     {
       name: 'Pro',
@@ -102,7 +102,7 @@ const Pricing: React.FC = () => {
       ],
       cta: 'Start Pro',
       popular: false,
-      disabled: false, // ← live now
+      isFree: false,
     },
   ];
 
@@ -116,7 +116,7 @@ const Pricing: React.FC = () => {
         Back
       </button>
 
-      {/* Header - Matches Landing Page Gradient Exactly */}
+      {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
           Create Videos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">That Actually Get Views</span>
@@ -182,7 +182,7 @@ const Pricing: React.FC = () => {
             </ul>
 
             {/* --------  BUTTON LOGIC  -------- */}
-            {tier.name === 'Free' ? (
+            {tier.isFree ? (
               <button 
                 onClick={() => navigate('/generator')}
                 className="w-full py-3 rounded-xl font-semibold transition-all bg-zinc-700 text-white hover:bg-zinc-600"
