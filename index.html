@@ -35,12 +35,13 @@
     <!-- Vite entry -->
     <script type="module" src="/src/index.tsx"></script>
   </head>
-    <script type="module">
-  console.table(import.meta.env);
-</script>
 
   <body>
     <div id="root"></div>
-    <!-- NO inline script here any more -->
+
+    <!-- dump env vars after Vite has run -->
+    <script type="module">
+      console.table(import.meta.env);
+    </script>
   </body>
 </html>
