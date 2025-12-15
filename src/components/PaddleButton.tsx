@@ -30,7 +30,7 @@ export default function PaddleButton({ priceId, userId, userEmail }: Props) {
       customData: { userId },
       customer: { email: userEmail },
     });
-
+console.log('PADDLE PROPS', { priceId, userId, userEmail });
     paddle.Checkout.open({
       settings: { displayMode: 'overlay', theme: 'dark' },
       items: [{ priceId, quantity: 1 }],
