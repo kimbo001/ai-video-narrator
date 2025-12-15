@@ -9,8 +9,8 @@ const Pricing: React.FC = () => {
 
   /*  TODO: replace with real auth context  */
   const userId   = 'user-id-placeholder'; // ← real id from auth
-  const userEmail = 'user@example.com';   // ← real email from auth
-
+  const userEmail = 'test-buyer@example.com'; // valid format
+c
   /*  Paddle price IDs (guaranteed to exist)  */
   const priceIds = {
     'New Tuber': import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER as string,
