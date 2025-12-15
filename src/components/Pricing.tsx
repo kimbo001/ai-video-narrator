@@ -1,221 +1,229 @@
-import React, { useState, useEffect } from 'react';
-import { Check, ArrowLeft, Key, Lock, Unlock, Loader2 } from 'lucide-react';
-import { Page } from '../types';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Check, ArrowLeft, Star, Zap, Play, Video, Clock, Users } from 'lucide-react';
 
-interface PricingProps {
-  onBack: () => void;
-  // REMOVED: onNavigate: (page: Page) => void;  // This was causing the TS error
-}
+const Pricing: React.FC = () => {
+  const navigate = useNavigate();
 
-const Pricing: React.FC<PricingProps> = ({ onBack }) => {
-  const [licenseKey, setLicenseKey] = useState('');
-  const [isPro, setIsPro] = useState(false);
-  const [activationMsg, setActivationMsg] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-
-  // UPDATED: Using Product ID as requested by Gumroad Error
-  const GUMROAD_PRODUCT_ID = 'IKQUftD2-Z1zgm1zoHAWUA=='; 
-
-  useEffect(() => {
-    const storedLicense = localStorage.getItem('license_key');
-    if (storedLicense) {
-        setIsPro(true);
-        setLicenseKey(storedLicense);
+  const tiers = [
+    {
+      name: "Free",
+      price: "$0",
+      period: "/month",
+      description: "Perfect for getting started",
+      autoDaily: 3,
+      manualDaily: 0.5, // 1 per 48 hours
+      features: [
+        "3 AI-generated videos daily",
+        "1 manual video every 48 hours",
+        "720p export quality",
+        "Standard AI voices",
+        "Basic stock footage"
+      ],
+      cta: "Start Creating Free",
+      popular: false,
+      disabled: false
+    },
+    {
+      name: "New Tuber",
+      price: "$10",
+      period: "/month",
+      description: "For serious creators",
+      autoDaily: 5,
+      manualDaily: 5,
+      features: [
+        "5 AI-generated videos daily",
+        "5 manual videos daily",
+        "1080p export quality",
+        "Premium AI voices",
+        "Extended stock footage",
+        "Commercial usage rights",
+        "Priority processing"
+      ],
+      cta: "Start New Tuber",
+      popular: true,
+      disabled: true
+    },
+    {
+      name: "Creator",
+      price: "$25",
+      period: "/month",
+      description: "For growing channels",
+      autoDaily: 25,
+      manualDaily: 25,
+      features: [
+        "25 AI-generated videos daily",
+        "25 manual videos daily",
+        "4K export quality",
+        "All AI voices + custom",
+        "Premium stock footage",
+        "Commercial usage rights",
+        "Priority processing",
+        "Advanced editing tools",
+        "Analytics dashboard"
+      ],
+      cta: "Start Creator",
+      popular: false,
+      disabled: true
+    },
+    {
+      name: "Pro",
+      price: "$50",
+      period: "/month",
+      description: "For professionals",
+      autoDaily: "Unlimited",
+      manualDaily: "Unlimited",
+      features: [
+        "Unlimited AI-generated videos",
+        "Unlimited manual videos",
+        "4K+ export quality",
+        "All AI voices + custom",
+        "Premium stock footage",
+        "Commercial usage rights",
+        "Priority processing",
+        "Advanced editing tools",
+        "Analytics dashboard",
+        "API access",
+        "White-label options",
+        "Dedicated support"
+      ],
+      cta: "Start Pro",
+      popular: false,
+      disabled: true
     }
-  }, []);
-
-  const handleActivate = async () => {
-      if (licenseKey.trim().length < 5) {
-          setActivationMsg('Please enter a valid key.');
-          return;
-      }
-
-      setIsVerifying(true);
-      setActivationMsg('');
-
-      try {
-          console.log(`Verifying key for product ID: ${GUMROAD_PRODUCT_ID}`);
-          
-          const res = await fetch('/api/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  product_id: GUMROAD_PRODUCT_ID,
-                  license_key: licenseKey.trim()
-              })
-          });
-
-          const data = await res.json();
-
-          if (data.success) {
-              localStorage.setItem('license_key', licenseKey.trim());
-              setIsPro(true);
-              setActivationMsg('License activated successfully! You now have unlimited access.');
-          } else {
-              console.error("Verification failed:", data);
-              setActivationMsg(data.error || 'Invalid or refunded license.');
-              setIsPro(false);
-          }
-      } catch (error) {
-          console.error("Verification error:", error);
-          setActivationMsg('Connection error. Please try again.');
-      } finally {
-          setIsVerifying(false);
-      }
-  };
-
-  const handleDeactivate = () => {
-      localStorage.removeItem('license_key');
-      setIsPro(false);
-      setLicenseKey('');
-      setActivationMsg('License removed.');
-  };
+  ];
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <button 
-        onClick={onBack}
+        onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
 
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-white mb-4">Simple, Transparent Pricing</h1>
-        <p className="text-zinc-400 text-lg">Start for free, unlock unlimited power forever.</p>
-      </div>
+      {/* Header - Matches Landing Page Gradient Exactly */}
+<div className="text-center mb-12">
+  <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+    Create Videos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">That Actually Get Views</span>
+  </h1>
+  <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+    From text to viral content in seconds. No face required.
+  </p>
+</div>
 
-      {/* Activation Section */}
-      <div className="max-w-xl mx-auto mb-16 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-              {isPro ? <Unlock className="text-green-500 w-5 h-5" /> : <Key className="text-cyan-500 w-5 h-5" />}
-              <h3 className="text-white font-semibold">{isPro ? 'Lifetime License Active' : 'Activate Lifetime License'}</h3>
+      {/* Social Proof */}
+      <div className="max-w-3xl mx-auto mb-12 text-center">
+        <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-6">
+          <p className="text-green-200 italic mb-2">"I really loved your app. It was bit addicting to try different stories."</p>
+          <p className="text-green-300 text-sm">- Guilty_Tear_4477, Reddit user</p>
+          <div className="flex items-center justify-center gap-4 mt-4 text-sm text-zinc-400">
+            <span className="flex items-center gap-1"><Users className="w-4 h-4" /> Loved by creators</span>
+            <span className="flex items-center gap-1"><Star className="w-4 h-4" /> 5 Reddit front pages</span>
           </div>
-          
-          {isPro ? (
-              <div>
-                  <p className="text-green-400 text-sm mb-4">You have unlimited access.</p>
-                  <button onClick={handleDeactivate} className="text-xs text-zinc-500 hover:text-zinc-300 underline">Deactivate Device</button>
-              </div>
-          ) : (
-              <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <input 
-                        type="text" 
-                        value={licenseKey}
-                        onChange={(e) => setLicenseKey(e.target.value)}
-                        placeholder="Enter Gumroad License Key"
-                        className="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm focus:border-cyan-500 outline-none"
-                    />
-                    <button 
-                        onClick={handleActivate}
-                        disabled={isVerifying}
-                        className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activate'}
-                    </button>
-                  </div>
-
-                  {/* GUMROAD BUTTON – PERFECTLY PLACED & STYLED */}
-                  <div className="mt-8 text-center">
-                    <p className="text-zinc-400 text-sm mb-4">
-                      Don't have a license key yet?
-                    </p>
-                    <a
-                      href="https://kimbosaurus.gumroad.com/l/AIVideoNarrator "
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold py-4 px-10 rounded-2xl shadow-xl shadow-cyan-500/40 transition-all transform hover:scale-105"
-                    >
-                      Get Lifetime License Key – $99 (one-time)
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                    <p className="text-xs text-zinc-500 mt-3">Instant delivery • Lifetime access • No subscriptions</p>
-                  </div>
-                  {/* END OF GUMROAD BUTTON */}
-              </div>
-          )}
-          {activationMsg && <p className={`text-xs mt-3 ${activationMsg.includes('Invalid') || activationMsg.includes('error') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
-      </div>
-
-      {/* Pricing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        {/* Free Plan */}
-        <div className={`bg-[#11141b] border ${isPro ? 'border-zinc-800 opacity-50' : 'border-zinc-700'} rounded-2xl p-8 flex flex-col`}>
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white">Free Starter</h3>
-            <p className="text-zinc-400 text-sm mt-2">Perfect for trying it out.</p>
-          </div>
-          <div className="mb-8">
-            <span className="text-4xl font-bold text-white">$0</span>
-            <span className="text-zinc-500">/forever</span>
-          </div>
-          <ul className="flex-1 space-y-4 mb-8">
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
-              <span>5 Generations per day</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
-              <span>720p Export Quality</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
-              <span>Standard AI Voices</span>
-            </li>
-          </ul>
-          <button disabled={true} className="w-full py-3 rounded-xl border border-zinc-700 text-zinc-400 font-semibold cursor-default">
-            {isPro ? 'Upgraded' : 'Current Plan'}
-          </button>
         </div>
+      </div>
 
-        {/* Lifetime Plan */}
-        <div className={`bg-[#11141b] border ${isPro ? 'border-green-500/50 bg-green-900/10' : 'border-cyan-500/50'} rounded-2xl p-8 flex flex-col relative overflow-hidden`}>
-          {!isPro && <div className="absolute top-0 right-0 bg-cyan-500 text-black text-xs font-bold px-3 py-1 rounded-bl-xl">BEST VALUE</div>}
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white">Lifetime Access</h3>
-            <p className="text-zinc-400 text-sm mt-2">One payment, unlimited forever.</p>
-          </div>
-          <div className="mb-8">
-            <span className="text-4xl font-bold text-white">$99</span>
-            <span className="text-zinc-500">/once off</span>
-          </div>
-          <ul className="flex-1 space-y-4 mb-8">
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span className="font-bold text-white">Unlimited Generations</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Commercial Rights</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Priority 1080p Processing</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Support Future Updates</span>
-            </li>
-          </ul>
-          
-          {isPro ? (
-              <button disabled className="w-full py-3 rounded-xl bg-green-600 text-white font-bold cursor-default">
-                  Plan Active
-              </button>
-          ) : (
+      {/* Pricing Tiers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        {tiers.map((tier, index) => (
+          <div 
+            key={tier.name}
+            className={`bg-[#11141b] border ${tier.popular ? 'border-yellow-500/50' : 'border-zinc-800'} rounded-2xl p-6 flex flex-col relative ${tier.disabled ? 'opacity-60' : ''}`}
+          >
+            {tier.popular && (
+              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-bl-lg">
+                POPULAR
+              </div>
+            )}
+            
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-white">{tier.name}</h3>
+              <p className="text-zinc-400 text-sm mt-1">{tier.description}</p>
+            </div>
+            
+            <div className="mb-6">
+              <span className="text-3xl font-bold text-white">{tier.price}</span>
+              <span className="text-zinc-500 text-sm"> {tier.period}</span>
+            </div>
+
+            {/* Daily Limits - The Hook */}
+            <div className="mb-6 bg-zinc-900/50 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-zinc-400 text-sm">AI Videos Daily</span>
+                <span className="text-white font-bold">{tier.autoDaily}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-400 text-sm">Manual Videos Daily</span>
+                <span className="text-white font-bold">{tier.manualDaily}</span>
+              </div>
+            </div>
+
+            <ul className="flex-1 space-y-3 mb-6">
+              {tier.features.map((feature, idx) => (
+                <li key={idx} className="flex items-center gap-2 text-zinc-300 text-sm">
+                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+
+            {tier.disabled ? (
               <button 
-                onClick={() => window.open('https://kimbosaurus.gumroad.com/l/AIVideoNarrator ', '_blank')} 
-                className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
+                className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-400 font-semibold cursor-not-allowed"
               >
-                Buy on Gumroad
+                Coming Soon
               </button>
-          )}
-          {!isPro && <p className="text-center text-xs text-zinc-500 mt-3">Receive license key instantly via email</p>}
+            ) : (
+              <button 
+                onClick={() => tier.name === "Free" ? navigate('/generator') : null}
+                className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                  tier.name === "Free" 
+                    ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                    : 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                }`}
+              >
+                {tier.cta}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* FAQ Section */}
+      <div className="max-w-4xl mx-auto mt-16">
+        <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
+        <div className="space-y-4">
+          <div className="bg-zinc-800 p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-2">How does the daily limit work?</h3>
+            <p className="text-zinc-400">AI videos reset every 24 hours. Manual videos are 1 per 48 hours for free users. Paid tiers get daily refreshes.</p>
+          </div>
+          <div className="bg-zinc-800 p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-2">What's the difference between AI and manual videos?</h3>
+            <p className="text-zinc-400">AI videos auto-generate from your text with voiceover and stock footage. Manual videos let you control every aspect while AI assists.</p>
+          </div>
+          <div className="bg-zinc-800 p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-2">Can I cancel anytime?</h3>
+            <p className="text-zinc-400">Yes, all paid plans cancel anytime. You'll keep access until the end of your billing period.</p>
+          </div>
+          <div className="bg-zinc-800 p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-2">When will monthly subscriptions launch?</h3>
+            <p className="text-zinc-400">We're finalizing payment processing. Join the waitlist for founder pricing when we launch!</p>
+          </div>
         </div>
+      </div>
+
+      {/* Final CTA */}
+      <div className="text-center mt-16">
+        <button 
+          onClick={() => navigate('/generator')}
+          className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-lg rounded-xl shadow-xl shadow-cyan-500/40 transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
+        >
+          <Play className="w-5 h-5" />
+          Start Creating Free
+        </button>
+        <p className="text-zinc-400 text-sm mt-4">No credit card required • 5 videos daily • Instant access</p>
       </div>
     </div>
   );
