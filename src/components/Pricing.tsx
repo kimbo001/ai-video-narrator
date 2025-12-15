@@ -1,96 +1,109 @@
+// src/components/Pricing.tsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Check, ArrowLeft, Star, Zap, Play, Video, Clock, Users } from 'lucide-react';
+import PaddleButton from './PaddleButton'; // ← live checkout
 
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
 
+  // ----  current user placeholders – replace with your auth context  ----
+  const userId   = 'user-id-placeholder'; // ← real id from auth
+  const userEmail = 'user@example.com';   // ← real email from auth
+
+  // ----  price IDs from env  ----
+  const priceIds = {
+    'New Tuber': import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER as string,
+    Creator:     import.meta.env.VITE_PADDLE_PRICE_CREATOR as string,
+    Pro:         import.meta.env.VITE_PADDLE_PRICE_PRO as string,
+  };
+
   const tiers = [
     {
-      name: "Free",
-      price: "$0",
-      period: "/month",
-      description: "Perfect for getting started",
+      name: 'Free',
+      price: '$0',
+      period: '/month',
+      description: 'Perfect for getting started',
       autoDaily: 3,
-      manualDaily: 0.5, // 1 per 48 hours
+      manualDaily: 0.5, // 1 per 48 h
       features: [
-        "3 AI-generated videos daily",
-        "1 manual video every 48 hours",
-        "720p export quality",
-        "Standard AI voices",
-        "Basic stock footage"
+        '3 AI-generated videos daily',
+        '1 manual video every 48 hours',
+        '720p export quality',
+        'Standard AI voices',
+        'Basic stock footage',
       ],
-      cta: "Start Creating Free",
+      cta: 'Start Creating Free',
       popular: false,
-      disabled: false
+      disabled: false,
     },
     {
-      name: "New Tuber",
-      price: "$10",
-      period: "/month",
-      description: "For serious creators",
+      name: 'New Tuber',
+      price: '$10',
+      period: '/month',
+      description: 'For serious creators',
       autoDaily: 5,
       manualDaily: 5,
       features: [
-        "5 AI-generated videos daily",
-        "5 manual videos daily",
-        "1080p export quality",
-        "Premium AI voices",
-        "Extended stock footage",
-        "Commercial usage rights",
-        "Priority processing"
+        '5 AI-generated videos daily',
+        '5 manual videos daily',
+        '1080p export quality',
+        'Premium AI voices',
+        'Extended stock footage',
+        'Commercial usage rights',
+        'Priority processing',
       ],
-      cta: "Start New Tuber",
+      cta: 'Start New Tuber',
       popular: true,
-      disabled: true
+      disabled: false, // ← live now
     },
     {
-      name: "Creator",
-      price: "$25",
-      period: "/month",
-      description: "For growing channels",
+      name: 'Creator',
+      price: '$25',
+      period: '/month',
+      description: 'For growing channels',
       autoDaily: 25,
       manualDaily: 25,
       features: [
-        "25 AI-generated videos daily",
-        "25 manual videos daily",
-        "4K export quality",
-        "All AI voices + custom",
-        "Premium stock footage",
-        "Commercial usage rights",
-        "Priority processing",
-        "Advanced editing tools",
-        "Analytics dashboard"
+        '25 AI-generated videos daily',
+        '25 manual videos daily',
+        '4K export quality',
+        'All AI voices + custom',
+        'Premium stock footage',
+        'Commercial usage rights',
+        'Priority processing',
+        'Advanced editing tools',
+        'Analytics dashboard',
       ],
-      cta: "Start Creator",
+      cta: 'Start Creator',
       popular: false,
-      disabled: true
+      disabled: false, // ← live now
     },
     {
-      name: "Pro",
-      price: "$50",
-      period: "/month",
-      description: "For professionals",
-      autoDaily: "Unlimited",
-      manualDaily: "Unlimited",
+      name: 'Pro',
+      price: '$50',
+      period: '/month',
+      description: 'For professionals',
+      autoDaily: 'Unlimited',
+      manualDaily: 'Unlimited',
       features: [
-        "Unlimited AI-generated videos",
-        "Unlimited manual videos",
-        "4K+ export quality",
-        "All AI voices + custom",
-        "Premium stock footage",
-        "Commercial usage rights",
-        "Priority processing",
-        "Advanced editing tools",
-        "Analytics dashboard",
-        "API access",
-        "White-label options",
-        "Dedicated support"
+        'Unlimited AI-generated videos',
+        'Unlimited manual videos',
+        '4K+ export quality',
+        'All AI voices + custom',
+        'Premium stock footage',
+        'Commercial usage rights',
+        'Priority processing',
+        'Advanced editing tools',
+        'Analytics dashboard',
+        'API access',
+        'White-label options',
+        'Dedicated support',
       ],
-      cta: "Start Pro",
+      cta: 'Start Pro',
       popular: false,
-      disabled: true
-    }
+      disabled: false, // ← live now
+    },
   ];
 
   return (
@@ -104,14 +117,14 @@ const Pricing: React.FC = () => {
       </button>
 
       {/* Header - Matches Landing Page Gradient Exactly */}
-<div className="text-center mb-12">
-  <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-    Create Videos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">That Actually Get Views</span>
-  </h1>
-  <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-    From text to viral content in seconds. No face required.
-  </p>
-</div>
+      <div className="text-center mb-12">
+        <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+          Create Videos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">That Actually Get Views</span>
+        </h1>
+        <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          From text to viral content in seconds. No face required.
+        </p>
+      </div>
 
       {/* Social Proof */}
       <div className="max-w-3xl mx-auto mb-12 text-center">
@@ -127,11 +140,10 @@ const Pricing: React.FC = () => {
 
       {/* Pricing Tiers */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-        {tiers.map((tier, index) => (
+        {tiers.map((tier) => (
           <div 
             key={tier.name}
-            className={`bg-[#11141b] border ${tier.popular ? 'border-yellow-500/50' : 'border-zinc-800'} rounded-2xl p-6 flex flex-col relative ${tier.disabled ? 'opacity-60' : ''}`}
-          >
+            className={`bg-[#11141b] border ${tier.popular ? 'border-yellow-500/50' : 'border-zinc-800'} rounded-2xl p-6 flex flex-col relative`}          >
             {tier.popular && (
               <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-bl-lg">
                 POPULAR
@@ -169,23 +181,20 @@ const Pricing: React.FC = () => {
               ))}
             </ul>
 
-            {tier.disabled ? (
+            {/* --------  BUTTON LOGIC  -------- */}
+            {tier.name === 'Free' ? (
               <button 
-                className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-400 font-semibold cursor-not-allowed"
-              >
-                Coming Soon
-              </button>
-            ) : (
-              <button 
-                onClick={() => tier.name === "Free" ? navigate('/generator') : null}
-                className={`w-full py-3 rounded-xl font-semibold transition-all ${
-                  tier.name === "Free" 
-                    ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
-                    : 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                }`}
+                onClick={() => navigate('/generator')}
+                className="w-full py-3 rounded-xl font-semibold transition-all bg-zinc-700 text-white hover:bg-zinc-600"
               >
                 {tier.cta}
               </button>
+            ) : (
+              <PaddleButton
+                priceId={priceIds[tier.name]}
+                userId={userId}
+                userEmail={userEmail}
+              />
             )}
           </div>
         ))}
