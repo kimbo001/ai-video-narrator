@@ -191,7 +191,7 @@ const Pricing: React.FC = () => {
               </button>
             ) : (
               <PaddleButton
-                priceId={priceIds[tier.name]}
+                priceId={priceIds[tier.name as keyof typeof priceIds]}
                 userId={userId}
                 userEmail={userEmail}
               />
