@@ -30,6 +30,7 @@ export default function PaddleButton({ priceId, userId, userEmail }: Props) {
       customData: { userId },
       customer: { email: userEmail },
     });
+console.log('ITEMS FULL', JSON.stringify({ items: [{ priceId, quantity: 1 }] }, null, 2));
 console.log('PADDLE PROPS', { priceId, userId, userEmail });
     paddle.Checkout.open({
       settings: { displayMode: 'overlay', theme: 'dark' },
