@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model UserStats {
+  userId            String
+  date              String
+  autoVideosToday   Int     @default(0)
+  manualVideosToday Int     @default(0)
+  manualVideos48h   Int     @default(0)
+  @@id([userId, date])
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String
+  paddleSubId String   @unique
+  planId      String
+  status      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
