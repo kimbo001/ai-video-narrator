@@ -39,12 +39,14 @@
   <body>
     <div id="root"></div>
 
-    <!-- debug: dump Paddle env vars -->
+    <!-- debug: final Paddle payload -->
     <script type="module">
-  console.log('PADDLE TOKEN', import.meta.env.VITE_PADDLE_CLIENT_TOKEN);
-  console.log('NEW TUBER ID', import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER);
-  console.log('CREATOR ID', import.meta.env.VITE_PADDLE_PRICE_CREATOR);
-  console.log('PRO ID', import.meta.env.VITE_PADDLE_PRICE_PRO);
-</script>
+      console.log('FINAL PAYLOAD', JSON.stringify({
+        token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN,
+        items: [{ priceId: import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER, quantity: 1 }],
+        customData: { userId: 'user-id-placeholder' },
+        customer: { email: 'test-buyer@example.com' },
+      }, null, 2));
+    </script>
   </body>
 </html>
