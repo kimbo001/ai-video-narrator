@@ -22,6 +22,15 @@ export default function PaddleButton({ priceId, userId, userEmail }: Props) {
 
   const open = () => {
     if (!paddle) return;
+
+    // ----  DEBUG: log exactly what we send  ----
+    console.log('PADDLE CHECKOUT PAYLOAD', {
+      token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN,
+      items: [{ priceId, quantity: 1 }],
+      customData: { userId },
+      customer: { email: userEmail },
+    });
+
     paddle.Checkout.open({
       settings: { displayMode: 'overlay', theme: 'dark' },
       items: [{ priceId, quantity: 1 }],
