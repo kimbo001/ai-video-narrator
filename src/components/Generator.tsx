@@ -1,5 +1,6 @@
 // src/components/Generator.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';          // ← NEW
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
 import { analyzeScript, generateNarration } from '../services/gemini';
@@ -50,10 +51,14 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [generationsToday, setGenerationsToday] = useState(0);
   const [isPro, setIsPro] = useState(false);
 
-  // ----------  NEW:  call backend instead of importing userService  ----------
+  // REAL USER ID -----------------------------------------------------------
+  const { user } = useUser();
+  const userId = user?.id ?? '';
+  //-------------------------------------------------------------------------
+
   const fetchUsage = async () => {
     try {
-      const res = await fetch('/api/limits?userId=user-id-placeholder&type=auto');
+      const res = await fetch(`/api/limits?userId=${userId}&type=auto`);
       if (!res.ok) return;
       const data = await res.json();
       setGenerationsToday(data.remaining ? data.remaining.auto : 0);
@@ -62,7 +67,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   useEffect(() => { fetchUsage(); }, []);
 
   const checkLimits = async (type: 'auto' | 'manual') => {
-    const res = await fetch(`/api/limits?userId=user-id-placeholder&type=${type}`);
+    const res = await fetch(`/api/limits?userId=${userId}&type=${type}`);
     if (!res.ok) {
       const { error } = await res.json();
       alert(error);
@@ -70,7 +75,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     }
     return true;
   };
-  // --------------------------------------------------------------------------
 
   const usedMediaUrlsRef = useRef<Set<string>>(new Set());
 

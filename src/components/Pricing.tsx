@@ -1,17 +1,20 @@
 // src/components/Pricing.tsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';          // ← NEW
 import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
-import PaddleButton from './PaddleButton'; // live checkout
+import PaddleButton from './PaddleButton';
 
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
 
-  /*  TODO: replace with real auth context  */
-  const userId   = 'user-id-placeholder'; // ← real id from auth
-  const userEmail = 'test-buyer@example.com'; // valid format
+  // REAL USER DATA ---------------------------------------------------------
+  const { user } = useUser();
+  const userId   = user?.id ?? '';               // ← NEW
+  const userEmail = user?.emailAddresses[0]?.emailAddress ?? '';
+  //-------------------------------------------------------------------------
 
-  /*  Paddle price IDs (guaranteed to exist)  */
+  /*  Paddle price IDs  */
   const priceIds = {
     'New Tuber': import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER as string,
     Creator:     import.meta.env.VITE_PADDLE_PRICE_CREATOR as string,
@@ -25,7 +28,7 @@ const Pricing: React.FC = () => {
       period: '/month',
       description: 'Perfect for getting started',
       autoDaily: 3,
-      manualDaily: 0.5, // 1 per 48 h
+      manualDaily: 0.5,
       features: [
         '3 AI-generated videos daily',
         '1 manual video every 48 hours',
