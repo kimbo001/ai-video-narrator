@@ -1,11 +1,14 @@
+// src/App.tsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
+import { ClerkProvider, useUser } from '@clerk/clerk-react';
 
 import LandingPage from './components/LandingPage';
 import Generator from './components/Generator';
 import Pricing from './components/Pricing';
 import Legal from './components/Legal';
+import PlayPage from './pages/Play';
 
 /* ==========  ROOT LAYOUT  ========== */
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -20,6 +23,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         <div className="hidden md:flex items-center gap-8">
           <Link to="/" className="text-sm font-medium text-zinc-400 hover:text-white">Home</Link>
           <Link to="/pricing" className="text-sm font-medium text-zinc-400 hover:text-white">Pricing</Link>
+          <Link to="/play" className="text-sm font-medium text-zinc-400 hover:text-white">Play</Link>
           <Link to="/legal" className="text-sm font-medium text-zinc-400 hover:text-white">Terms & Privacy</Link>
         </div>
 
@@ -51,18 +55,25 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 /* ==========  ROUTER  ========== */
+const AppRoutes: React.FC = () => (
+  <Routes>
+    <Route path="/" element={<LandingPage />} />
+    <Route path="/generator" element={<Generator onBack={() => window.history.back()} />} />
+    <Route path="/pricing" element={<Pricing />} />
+    <Route path="/play" element={<PlayPage />} />
+    <Route path="/legal" element={<Legal onBack={() => window.history.back()} />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+
 const App: React.FC = () => (
-  <BrowserRouter>
-    <Layout>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/generator" element={<Generator onBack={() => window.history.back()} />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/legal" element={<Legal onBack={() => window.history.back()} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
-  </BrowserRouter>
+  <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+    <BrowserRouter>
+      <Layout>
+        <AppRoutes />
+      </Layout>
+    </BrowserRouter>
+  </ClerkProvider>
 );
 
 export default App;
