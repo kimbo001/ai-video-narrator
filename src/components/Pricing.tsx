@@ -1,7 +1,7 @@
 // src/components/Pricing.tsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';          // ← NEW
+import { useSafeUser } from '../lib/useSafeUser';          // ← NEW
 import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
 import PaddleButton from './PaddleButton';
 
@@ -9,7 +9,7 @@ const Pricing: React.FC = () => {
   const navigate = useNavigate();
 
   // REAL USER DATA ---------------------------------------------------------
-  const { user } = useUser();
+  const { user } = useSafeUser();
   const userId   = user?.id ?? '';               // ← NEW
   const userEmail = user?.emailAddresses[0]?.emailAddress ?? '';
   //-------------------------------------------------------------------------

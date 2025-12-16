@@ -43,6 +43,7 @@
   },
   "overrides": {
     "esbuild": "^0.25.0",
-    "jws": "^4.0.1"
+    "jws": "^4.0.1",
+    "@clerk/shared": "^3.40.0"
   }
 }

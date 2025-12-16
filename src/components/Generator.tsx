@@ -1,6 +1,6 @@
 // src/components/Generator.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';          // ← NEW
+import { useSafeUser } from '../lib/useSafeUser';          // ← NEW
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
 import { analyzeScript, generateNarration } from '../services/gemini';
@@ -52,7 +52,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [isPro, setIsPro] = useState(false);
 
   // REAL USER ID -----------------------------------------------------------
-  const { user } = useUser();
+  const { user } = useSafeUser();
   const userId = user?.id ?? '';
   //-------------------------------------------------------------------------
 
