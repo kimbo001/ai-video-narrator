@@ -1,11 +1,10 @@
-// src/pages/Play.tsx
 import React from 'react';
 import { useUser } from '@clerk/clerk-react';
 import FlappyNarrator from '@/components/FlappyNarrator';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const PlayPage: React.FC = () => {
   const { user } = useUser();
-  // signed-in → real id, signed-out → anon random id
   const userId = user?.id ?? 'anon-' + Math.random().toString(36).slice(2, 11);
 
   return (
@@ -14,7 +13,9 @@ const PlayPage: React.FC = () => {
         <h1 className="text-4xl font-bold text-center mb-2">Narration Flap</h1>
         <p className="text-center text-zinc-400 mb-8">Beat the AI narrator’s timing and win a free month of Pro.</p>
 
-        <FlappyNarrator userId={userId} />
+        <ErrorBoundary>
+          <FlappyNarrator userId={userId} />
+        </ErrorBoundary>
 
         <div className="mt-8 text-center text-xs text-zinc-500">
           {user
@@ -25,5 +26,5 @@ const PlayPage: React.FC = () => {
     </div>
   );
 };
-
+// existing code ...
 export default PlayPage;
