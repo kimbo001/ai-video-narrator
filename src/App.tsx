@@ -2,7 +2,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
-import { ClerkProvider, useUser } from '@clerk/clerk-react';
+import { ClerkProvider, useUser, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 
 import LandingPage from './components/LandingPage';
 import Generator from './components/Generator';
@@ -10,7 +10,22 @@ import Pricing from './components/Pricing';
 import Legal from './components/Legal';
 import PlayPage from './pages/Play';
 
-/* ==========  ROOT LAYOUT  ========== */
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || ''; // allow empty
+
+/* ==========  AUTH GUARD  ========== */
+const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  if (!clerkPubKey) return <>{children}</>; // no key → skip auth completely
+  return (
+    <>
+      <SignedIn>{children}</SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
+  );
+};
+
+/* ==========  LAYOUT  ========== */
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen bg-[#0b0e14] text-zinc-300 font-sans selection:bg-cyan-500/30 flex flex-col">
     <nav className="border-b border-zinc-800 bg-[#0b0e14]/80 backdrop-blur-md sticky top-0 z-50">
@@ -28,14 +43,33 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         </div>
 
         <div className="flex items-center gap-4">
-          <Link to="/generator" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
-            App Dashboard
-          </Link>
+          {/* SIGN-IN / SIGN-OUT BUTTONS */}
+          {clerkPubKey && (
+            <>
+              <SignedOut>
+                <Link to="/sign-in" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
+                  Sign In
+                </Link>
+              </SignedOut>
+              <SignedIn>
+                <Link to="/generator" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
+                  App Dashboard
+                </Link>
+              </SignedIn>
+            </>
+          )}
+          {!clerkPubKey && (
+            <Link to="/generator" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
+              App Dashboard
+            </Link>
+          )}
         </div>
       </div>
     </nav>
 
-    <main className="flex-1 flex flex-col w-full h-full">{children}</main>
+    <main className="flex-1 flex flex-col w-full h-full">
+      <AuthGuard>{children}</AuthGuard>
+    </main>
 
     <Analytics />
 
@@ -62,18 +96,41 @@ const AppRoutes: React.FC = () => (
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/play" element={<PlayPage />} />
     <Route path="/legal" element={<Legal onBack={() => window.history.back()} />} />
+    {/* catch-all for Clerk sign-in/out if key exists */}
+    {import.meta.env.VITE_CLERK_PUBLISHABLE_KEY && (
+      <>
+        <Route path="/sign-in/*" element={<RedirectToSignIn />} />
+        <Route path="/sign-up/*" element={<RedirectToSignIn />} />
+      </>
+    )}
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 );
 
-const App: React.FC = () => (
-  <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
-    <BrowserRouter>
-      <Layout>
-        <AppRoutes />
-      </Layout>
-    </BrowserRouter>
-  </ClerkProvider>
-);
+/* ==========  APP  ========== */
+const App: React.FC = () => {
+  const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+  // If no key, skip Clerk completely (avoids crash)
+  if (!clerkPubKey) {
+    return (
+      <BrowserRouter>
+        <Layout>
+          <AppRoutes />
+        </Layout>
+      </BrowserRouter>
+    );
+  }
+
+  return (
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <BrowserRouter>
+        <Layout>
+          <AppRoutes />
+        </Layout>
+      </BrowserRouter>
+    </ClerkProvider>
+  );
+};
 
 export default App;
