@@ -1,10 +1,11 @@
+// src/pages/Play.tsx
 import React from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useSafeUser } from '../lib/useSafeUser';
 import FlappyNarrator from '@/components/FlappyNarrator';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const PlayPage: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useSafeUser();          // never throws
   const userId = user?.id ?? 'anon-' + Math.random().toString(36).slice(2, 11);
 
   return (
@@ -26,5 +27,5 @@ const PlayPage: React.FC = () => {
     </div>
   );
 };
-// existing code ...
+
 export default PlayPage;
