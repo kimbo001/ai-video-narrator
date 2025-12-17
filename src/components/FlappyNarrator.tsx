@@ -1,4 +1,4 @@
-// src/components/FlappyNarrator.tsx - UPDATED: NO GROUND (clean floating feel)
+// src/components/FlappyNarrator.tsx - FINAL VERSION: MIC ALWAYS IN FOREGROUND + ALL FIXES
 
 import React, { useRef, useEffect, useState } from 'react';
 
@@ -41,7 +41,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
   const pipes = useRef<{ x: number; gapTop: number; gapSize: number; passed: boolean }[]>([]);
   const frameCount = useRef(0);
 
-  // Images (removed ground)
+  // Images
   const images = useRef({
     background: new Image(),
     micSprite: new Image(),
@@ -80,6 +80,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
     });
   }, []);
 
+  // Speech synthesis
   const speakPhrase = (phrase: string, onEnd: () => void) => {
     if (!('speechSynthesis' in window)) {
       onEnd();
@@ -123,7 +124,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
   const flap = () => {
     if (gameState === 'playing') {
       birdVelocity.current = FLAP_STRENGTH;
-      birdFrame.current = 0;
+      birdFrame.current = 0; // Restart flap animation
     }
   };
 
@@ -136,7 +137,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
     let animationId: number;
 
     const gameLoop = () => {
-      // Physics
+      // Physics update
       birdVelocity.current += GRAVITY;
       birdY.current += birdVelocity.current;
 
@@ -148,7 +149,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
       // Move pipes
       pipes.current.forEach((pipe) => (pipe.x -= PIPE_SPEED));
 
-      // Spawn pipe
+      // Spawn new pipe with narration
       if (frameCount.current % 180 === 0) {
         const phrase = phrases[Math.floor(Math.random() * phrases.length)];
         const wordCount = phrase.split(' ').length;
@@ -173,7 +174,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         return pipe.x > -PIPE_WIDTH;
       });
 
-      // Collision (now only pipes + top/bottom of sky)
+      // Collision detection
       const hitPipe = pipes.current.some(
         (pipe) =>
           120 > pipe.x &&
@@ -188,15 +189,15 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         return;
       }
 
-      // Rendering
+      // === RENDERING (correct layer order) ===
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Background only
+      // 1. Background (back)
       ctx.drawImage(images.current.background, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Pipes
+      // 2. Pipes (middle)
       pipes.current.forEach((pipe) => {
-        // Top pipe
+        // Top pipe (flipped)
         ctx.save();
         ctx.translate(pipe.x + PIPE_WIDTH / 2, pipe.gapTop);
         ctx.scale(1, -1);
@@ -213,18 +214,18 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         );
       });
 
-      // Flying mic sprite
-      const spriteWidth = 80; // Adjust if your sprite frames are different width
+      // 3. Winged Microphone (foreground - ALWAYS ON TOP!)
+      const spriteWidth = 80; // Change this if your sprite frames are wider/narrower
       ctx.drawImage(
         images.current.micSprite,
-        birdFrame.current * spriteWidth,
-        0,
-        spriteWidth,
-        80,
-        100,
-        birdY.current - 40,
-        80,
-        80
+        birdFrame.current * spriteWidth, // source X
+        0,                               // source Y
+        spriteWidth,                     // source width
+        80,                              // source height
+        100,                             // destination X (horizontal position)
+        birdY.current - 40,              // destination Y (centered)
+        80,                              // displayed width
+        80                               // displayed height
       );
 
       animationId = requestAnimationFrame(gameLoop);
@@ -234,7 +235,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
     return () => cancelAnimationFrame(animationId);
   }, [gameState, imagesLoaded, score]);
 
-  // Input
+  // Input handling
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
@@ -257,14 +258,14 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         onClick={flap}
       />
 
-      {/* Loading */}
-      {(gameState === 'menu' && !imagesLoaded) && (
+      {/* Loading overlay */}
+      {gameState === 'menu' && !imagesLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 rounded-xl">
-          <p className="text-white text-3xl">Loading assets...</p>
+          <p className="text-white text-3xl font-bold">Loading assets...</p>
         </div>
       )}
 
-      {/* Menu */}
+      {/* Start Menu */}
       {gameState === 'menu' && imagesLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-xl">
           <div className="text-center text-white">
@@ -301,7 +302,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         </div>
       )}
 
-      {/* Score */}
+      {/* Live Score */}
       {gameState === 'playing' && (
         <div className="absolute top-8 left-1/2 -translate-x-1/2 text-white text-6xl font-bold drop-shadow-2xl">
           {score}
