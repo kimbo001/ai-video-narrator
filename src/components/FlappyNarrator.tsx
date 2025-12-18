@@ -1,4 +1,4 @@
-// src/components/FlappyNarrator.tsx - FINAL VERSION: MIC ALWAYS IN FOREGROUND + ALL FIXES
+// src/components/FlappyNarrator.tsx - FINAL: NO SPRITE BLEEDING + PERFECT 5-FRAME ANIMATION
 
 import React, { useRef, useEffect, useState } from 'react';
 
@@ -6,14 +6,19 @@ interface FlappyNarratorProps {
   userId?: string;
 }
 
-const CANVAS_WIDTH = 800;
+const CANVAS_WIDTH = 850;
 const CANVAS_HEIGHT = 500;
 
-const GRAVITY = 0.45;
-const FLAP_STRENGTH = -9.5;
-const PIPE_SPEED = 3;
-const PIPE_GAP_BASE = 150;
-const PIPE_WIDTH = 104;
+const GRAVITY = 0.4;
+const FLAP_STRENGTH = -4.5;
+const PIPE_SPEED = 2.2;
+const PIPE_GAP_BASE = 180;
+const PIPE_WIDTH = 90;
+
+// === CONFIGURE THESE FOR YOUR SPRITE SHEET ===
+const FRAME_COUNT = 4;                    // Your 5 frames
+const SPRITE_FRAME_WIDTH = 69;            // Exact width of ONE frame (change if different)
+const FRAME_HEIGHT = 69;                  // Height of each frame (usually same as width)
 
 const phrases = [
   "Welcome to the future of content",
@@ -34,14 +39,12 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
 
-  // Game refs
   const birdY = useRef(CANVAS_HEIGHT / 2);
   const birdVelocity = useRef(0);
   const birdFrame = useRef(0);
   const pipes = useRef<{ x: number; gapTop: number; gapSize: number; passed: boolean }[]>([]);
   const frameCount = useRef(0);
 
-  // Images
   const images = useRef({
     background: new Image(),
     micSprite: new Image(),
@@ -124,7 +127,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
   const flap = () => {
     if (gameState === 'playing') {
       birdVelocity.current = FLAP_STRENGTH;
-      birdFrame.current = 0; // Restart flap animation
+      birdFrame.current = 0;
     }
   };
 
@@ -134,26 +137,31 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
 
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
+
+    // CRITICAL FIX: Disable image smoothing to prevent bleeding
+    ctx.imageSmoothingEnabled = false;
+
     let animationId: number;
 
     const gameLoop = () => {
-      // Physics update
+      // Physics
       birdVelocity.current += GRAVITY;
       birdY.current += birdVelocity.current;
 
+      // Frame animation
       frameCount.current++;
       if (frameCount.current % 8 === 0) {
-        birdFrame.current = (birdFrame.current + 1) % 3;
+        birdFrame.current = (birdFrame.current + 1) % FRAME_COUNT;
       }
 
       // Move pipes
       pipes.current.forEach((pipe) => (pipe.x -= PIPE_SPEED));
 
-      // Spawn new pipe with narration
+      // Spawn pipe
       if (frameCount.current % 180 === 0) {
         const phrase = phrases[Math.floor(Math.random() * phrases.length)];
         const wordCount = phrase.split(' ').length;
-        const dynamicGap = Math.max(100, PIPE_GAP_BASE - wordCount * 10);
+        const dynamicGap = Math.max(120, PIPE_GAP_BASE - wordCount * 8);
 
         speakPhrase(phrase, () => {
           pipes.current.push({
@@ -174,12 +182,18 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         return pipe.x > -PIPE_WIDTH;
       });
 
-      // Collision detection
+      // Forgiving collision
+      const MIC_LEFT = 100;
+      const MIC_WIDTH = 60;
+      const MIC_TOP = birdY.current - 30;
+      const MIC_HEIGHT = 60;
+      const GRACE = 8;
+
       const hitPipe = pipes.current.some(
         (pipe) =>
-          120 > pipe.x &&
-          120 < pipe.x + PIPE_WIDTH &&
-          (birdY.current - 30 < pipe.gapTop || birdY.current + 30 > pipe.gapTop + pipe.gapSize)
+          MIC_LEFT < pipe.x + PIPE_WIDTH + GRACE &&
+          MIC_LEFT + MIC_WIDTH > pipe.x - GRACE &&
+          (MIC_TOP < pipe.gapTop - GRACE || MIC_TOP + MIC_HEIGHT > pipe.gapTop + pipe.gapSize + GRACE)
       );
 
       if (birdY.current < 40 || birdY.current > CANVAS_HEIGHT - 40 || hitPipe) {
@@ -189,22 +203,20 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         return;
       }
 
-      // === RENDERING (correct layer order) ===
+      // Rendering
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // 1. Background (back)
+      // Background
       ctx.drawImage(images.current.background, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // 2. Pipes (middle)
+      // Pipes
       pipes.current.forEach((pipe) => {
-        // Top pipe (flipped)
         ctx.save();
         ctx.translate(pipe.x + PIPE_WIDTH / 2, pipe.gapTop);
         ctx.scale(1, -1);
         ctx.drawImage(images.current.pipeTop, -PIPE_WIDTH / 2, 0, PIPE_WIDTH, pipe.gapTop + 100);
         ctx.restore();
 
-        // Bottom pipe
         ctx.drawImage(
           images.current.pipeBottom,
           pipe.x,
@@ -214,19 +226,27 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         );
       });
 
-      // 3. Winged Microphone (foreground - ALWAYS ON TOP!)
-      const spriteWidth = 80; // Change this if your sprite frames are wider/narrower
+      // Winged Mic - CLEAN CROPPING + NO BLEEDING
+      const sourceX = birdFrame.current * SPRITE_FRAME_WIDTH;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,215,0,0.6)';
+      ctx.shadowBlur = 10;
+
       ctx.drawImage(
         images.current.micSprite,
-        birdFrame.current * spriteWidth, // source X
-        0,                               // source Y
-        spriteWidth,                     // source width
-        80,                              // source height
-        100,                             // destination X (horizontal position)
-        birdY.current - 40,              // destination Y (centered)
-        80,                              // displayed width
-        80                               // displayed height
+        sourceX + 0.5,           // +0.5 offset to avoid sub-pixel sampling
+        0.5,                     // +0.5 vertical too
+        SPRITE_FRAME_WIDTH - 1,  // crop 1px from right to prevent edge bleed
+        FRAME_HEIGHT - 1,        // crop 1px from bottom
+        100,                     // x on canvas
+        birdY.current - 40,      // y on canvas
+        80,                      // display width
+        80                       // display height
       );
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
 
       animationId = requestAnimationFrame(gameLoop);
     };
@@ -235,7 +255,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
     return () => cancelAnimationFrame(animationId);
   }, [gameState, imagesLoaded, score]);
 
-  // Input handling
+  // Input
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
@@ -258,14 +278,12 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         onClick={flap}
       />
 
-      {/* Loading overlay */}
       {gameState === 'menu' && !imagesLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 rounded-xl">
           <p className="text-white text-3xl font-bold">Loading assets...</p>
         </div>
       )}
 
-      {/* Start Menu */}
       {gameState === 'menu' && imagesLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-xl">
           <div className="text-center text-white">
@@ -285,7 +303,6 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         </div>
       )}
 
-      {/* Game Over */}
       {gameState === 'gameover' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-xl">
           <div className="text-center text-white">
@@ -302,7 +319,6 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         </div>
       )}
 
-      {/* Live Score */}
       {gameState === 'playing' && (
         <div className="absolute top-8 left-1/2 -translate-x-1/2 text-white text-6xl font-bold drop-shadow-2xl">
           {score}
