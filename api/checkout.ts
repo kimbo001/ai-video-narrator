@@ -1,10 +1,6 @@
-// api/checkout.ts
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
-  }
+// api/checkout.js
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   const { variantId, userId, userEmail } = req.body || {};
 
@@ -14,7 +10,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
   const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
-
   if (!apiKey || !storeId) {
     console.error('Missing Lemon env vars');
     return res.status(500).json({ error: 'Server configuration error' });
@@ -24,9 +19,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lemonRes = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
       body: JSON.stringify({
         data: {
@@ -39,8 +34,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               custom: { user_id: userId },
             },
             product_options: {
-              redirect_url: 'https://aivideonarrator.com/pricing?success=true',
-              cancel_url: 'https://aivideonarrator.com/pricing',
+              redirect_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?success=true`,
+              cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing`,
             },
           },
         },
@@ -48,21 +43,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const data = await lemonRes.json();
-
     if (!lemonRes.ok) {
       console.error('Lemon API error:', data);
       return res.status(500).json({ error: 'Checkout creation failed' });
     }
 
-    res.status(200).json({ url: data.data.attributes.url });
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(200).json({ url: data.data.attributes.url });
+  } catch (err) {
+    console.error('Checkout error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
-
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
