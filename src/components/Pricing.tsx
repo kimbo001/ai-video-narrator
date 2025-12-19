@@ -1,24 +1,29 @@
 // src/components/Pricing.tsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSafeUser } from '../lib/useSafeUser';          // ← NEW
+import { useSafeUser } from '../lib/useSafeUser';
 import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
 import PaddleButton from './PaddleButton';
 
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
 
-  // REAL USER DATA ---------------------------------------------------------
   const { user } = useSafeUser();
-  const userId   = user?.id ?? '';               // ← NEW
+  const userId   = user?.id ?? '';
   const userEmail = user?.emailAddresses[0]?.emailAddress ?? '';
-  //-------------------------------------------------------------------------
 
-  /*  Paddle price IDs  */
+  /* Paddle price IDs */
   const priceIds = {
     'New Tuber': import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER as string,
     Creator:     import.meta.env.VITE_PADDLE_PRICE_CREATOR as string,
     Pro:         import.meta.env.VITE_PADDLE_PRICE_PRO as string,
+  };
+
+  /* NEW: Lemon Squeezy variant IDs */
+  const lsVariantIds = {
+    'New Tuber': import.meta.env.VITE_LEMON_NEW_TUBER as string,
+    Creator:     import.meta.env.VITE_LEMON_CREATOR as string,
+    Pro:         import.meta.env.VITE_LEMON_PRO as string,
   };
 
   const tiers = [
@@ -109,6 +114,17 @@ const Pricing: React.FC = () => {
     },
   ];
 
+  /* NEW: Lemon Squeezy checkout handler */
+  const startLemonCheckout = async (variantId: string) => {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variantId, userId, userEmail }),
+    });
+    const { url } = await res.json();
+    window.location.href = url;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <button 
@@ -119,7 +135,6 @@ const Pricing: React.FC = () => {
         Back
       </button>
 
-      {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
           Create Videos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">That Actually Get Views</span>
@@ -129,7 +144,6 @@ const Pricing: React.FC = () => {
         </p>
       </div>
 
-      {/* Social Proof */}
       <div className="max-w-3xl mx-auto mb-12 text-center">
         <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-6">
           <p className="text-green-200 italic mb-2">"I really loved your app. It was bit addicting to try different stories."</p>
@@ -141,12 +155,12 @@ const Pricing: React.FC = () => {
         </div>
       </div>
 
-      {/* Pricing Tiers */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {tiers.map((tier) => (
           <div 
             key={tier.name}
-            className={`bg-[#11141b] border ${tier.popular ? 'border-yellow-500/50' : 'border-zinc-800'} rounded-2xl p-6 flex flex-col relative`}          >
+            className={`bg-[#11141b] border ${tier.popular ? 'border-yellow-500/50' : 'border-zinc-800'} rounded-2xl p-6 flex flex-col relative`}
+          >
             {tier.popular && (
               <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-bl-lg">
                 POPULAR
@@ -163,7 +177,6 @@ const Pricing: React.FC = () => {
               <span className="text-zinc-500 text-sm"> {tier.period}</span>
             </div>
 
-            {/* Daily Limits - The Hook */}
             <div className="mb-6 bg-zinc-900/50 rounded-lg p-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-zinc-400 text-sm">AI Videos Daily</span>
@@ -184,7 +197,6 @@ const Pricing: React.FC = () => {
               ))}
             </ul>
 
-            {/* --------  BUTTON LOGIC  -------- */}
             {tier.isFree ? (
               <button 
                 onClick={() => navigate('/generator')}
@@ -193,17 +205,25 @@ const Pricing: React.FC = () => {
                 {tier.cta}
               </button>
             ) : (
-              <PaddleButton
-                priceId={priceIds[tier.name as keyof typeof priceIds]}
-                userId={userId}
-                userEmail={userEmail}
-              />
+              import.meta.env.VITE_USE_LEMON === 'true' ? (
+                <button
+                  onClick={() => startLemonCheckout(lsVariantIds[tier.name as keyof typeof lsVariantIds])}
+                  className="w-full py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white"
+                >
+                  {tier.cta}
+                </button>
+              ) : (
+                <PaddleButton
+                  priceId={priceIds[tier.name as keyof typeof priceIds]}
+                  userId={userId}
+                  userEmail={userEmail}
+                />
+              )
             )}
           </div>
         ))}
       </div>
 
-      {/* FAQ Section */}
       <div className="max-w-4xl mx-auto mt-16">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
         <div className="space-y-4">
@@ -226,7 +246,6 @@ const Pricing: React.FC = () => {
         </div>
       </div>
 
-      {/* Final CTA */}
       <div className="text-center mt-16">
         <button 
           onClick={() => navigate('/generator')}
