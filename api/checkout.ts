@@ -9,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { variantId, userId, userEmail } = req.body;
 
   if (!variantId || !userId) {
-    return res.status(400).json({ error: 'Missing data' });
+    return res.status(400).json({ error: 'Missing variantId or userId' });
   }
 
   try {
@@ -28,7 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             variant_id: Number(variantId),
             checkout_data: {
               email: userEmail || null,
-              custom: { user_id: userId },
+              custom: {
+                user_id: userId,
+              },
             },
             product_options: {
               redirect_url: 'https://aivideonarrator.com/pricing?success=true',
@@ -41,15 +43,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(data);
-      return res.status(500).json({ error: 'Checkout failed' });
+      console.error('Lemon Squeezy error:', data);
+      return res.status(500).json({ error: 'Failed to create checkout' });
     }
 
-    res.json({ url: data.data.attributes.url });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(200).json({ url: data.data.attributes.url });
+  } catch (error) {
+    console.error('Checkout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-export const config = { api: { bodyParser: true } };
+// Important: Parse JSON body
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
