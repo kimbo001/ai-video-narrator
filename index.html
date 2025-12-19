@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Google tag (gtag.js) -->
+    <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-6XGDCZZDX8"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -14,39 +14,13 @@
       gtag('config', 'G-6XGDCZZDX8');
     </script>
 
-    <!-- SEO & SOCIAL -->
-    <title>AI Video Narrator: Ultimate AI Short Creator and Narrator for TikTok & Reels</title>
-    <meta name="description" content="Create viral TikTok, Reels & YouTube videos from text in seconds. Free AI narrator, professional voiceovers, captions, stock footage & music. No face needed.">
-    <link rel="canonical" href="https://aivideonarrator.com/" />
+    <!-- ✅ REMOVED: Lemon Squeezy script is NOT needed for server-side checkout -->
+    <!-- You're using /api/checkout → no client-side overlay → no lemon.js needed -->
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="AI Video Narrator – Ultimate AI Short Creator and Narrator" />
-    <meta property="og:description" content="Turn any text into fully narrated viral videos in seconds. Free & unlimited." />
-    <meta property="og:image" content="https://aivideonarrator.com/og-image.jpg" />
-    <meta property="og:url" content="https://aivideonarrator.com/" />
-    <meta property="og:type" content="website" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AI Video Narrator – Ultimate AI Short Creator and Narrator" />
-    <meta name="twitter:description" content="Turn any text into fully narrated viral videos in seconds. Free & unlimited." />
-    <meta name="twitter:image" content="https://aivideonarrator.com/og-image.jpg" />
-
-    <!-- Vite entry -->
-    <script type="module" src="/src/index.tsx"></script>
+    <title>AI Video Narrator</title>
   </head>
-
   <body>
     <div id="root"></div>
-
-    <!-- debug: final Paddle payload -->
-    <script type="module">
-      console.log('FINAL PAYLOAD', JSON.stringify({
-        token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN,
-        items: [{ priceId: import.meta.env.VITE_PADDLE_PRICE_NEW_TUBER, quantity: 1 }],
-        customData: { userId: 'user-id-placeholder' },
-        customer: { email: 'test-buyer@example.com' },
-      }, null, 2));
-    </script>
+    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
