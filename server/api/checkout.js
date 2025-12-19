@@ -1,9 +1,10 @@
-import express from 'express';
-import fetch from 'node-fetch'; // or use built-in fetch in Node 18+
+// api/checkout.js
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.status(405).end('Method Not Allowed');
+    return;
+  }
 
-const router = express.Router();
-
-router.post('/checkout', async (req, res) => {
   const { variantId, userId, userEmail } = req.body;
 
   if (!variantId || !userId) {
@@ -22,20 +23,15 @@ router.post('/checkout', async (req, res) => {
         data: {
           type: 'checkouts',
           attributes: {
-            store_id: parseInt(process.env.LEMON_SQUEEZY_STORE_ID),
-            variant_id: parseInt(variantId),
+            store_id: Number(process.env.LEMON_SQUEEZY_STORE_ID),
+            variant_id: Number(variantId),
             checkout_data: {
               email: userEmail || null,
-              name: null, // optional
-              custom: {
-                user_id: userId, // This will be available in webhooks!
-              },
+              custom: { user_id: userId },
             },
             product_options: {
-              redirect_url: 'https://yourapp.com/pricing?success=true', // Back to pricing with success flag
+              redirect_url: 'https://aivideonarrator.com/pricing?success=true',
             },
-            // Optional: embed overlay (no redirect)
-            // checkout_options: { embed: true, media: false },
           },
         },
       }),
@@ -45,15 +41,19 @@ router.post('/checkout', async (req, res) => {
 
     if (!response.ok) {
       console.error(data);
-      return res.status(500).json({ error: 'Checkout creation failed' });
+      return res.status(500).json({ error: 'Checkout failed' });
     }
 
-    const checkoutUrl = data.data.attributes.url;
-    res.json({ url: checkoutUrl });
+    res.status(200).json({ url: data.data.attributes.url });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
-});
+}
 
-export default router;
+// For Vercel
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
