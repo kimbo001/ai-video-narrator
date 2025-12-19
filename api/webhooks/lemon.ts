@@ -3,25 +3,25 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const rawBody = await new Promise<Buffer>((resolve) => {
+  // Get raw body for signature verification
+  const rawBody = await new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('data', chunk => chunks.push(chunk));
     req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
   });
 
   const signature = req.headers['x-signature'] as string;
   const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
 
   if (!secret || !signature) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Missing secret or signature' });
   }
 
-  // Verify signature
   const hmac = crypto.createHmac('sha256', secret);
   const digest = hmac.update(rawBody).digest('hex');
 
@@ -29,45 +29,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
-  // Parse and handle the event
   const event = JSON.parse(rawBody.toString());
 
-  const eventName = event.meta?.event_name;
-  const customData = event.meta?.custom_data;
-  const userId = customData?.user_id;
+  console.log('Webhook received:', event.meta?.event_name, 'for user:', event.meta?.custom_data?.user_id);
 
-  if (!userId) {
-    console.warn('No user_id in webhook custom data');
-  }
+  // TODO: Handle events (upgrade user in DB)
+  // switch (event.meta?.event_name) { ... }
 
-  console.log(`Webhook received: ${eventName} for user ${userId}`);
-
-  // Handle specific events (upgrade user in your DB)
-  switch (eventName) {
-    case 'subscription_created':
-    case 'order_created':
-      // TODO: Mark user as paid, set tier based on variant_id
-      // e.g., await updateUserTier(userId, 'Pro');
-      break;
-
-    case 'subscription_cancelled':
-      // Downgrade or revoke access
-      break;
-
-    case 'subscription_payment_failed':
-      // Handle failed payment
-      break;
-
-    // Add more as needed
-  }
-
-  // Always respond 200 OK so Lemon doesn't retry
   res.status(200).json({ success: true });
 }
 
-// Important for raw body (signature verification)
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false,  // Critical for raw body
   },
 };

@@ -1,8 +1,9 @@
-// api/checkout.js
-export default async function handler(req, res) {
+// api/checkout.ts
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    res.status(405).end('Method Not Allowed');
-    return;
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const { variantId, userId, userEmail } = req.body;
@@ -44,16 +45,11 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Checkout failed' });
     }
 
-    res.status(200).json({ url: data.data.attributes.url });
+    res.json({ url: data.data.attributes.url });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 }
 
-// For Vercel
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
+export const config = { api: { bodyParser: true } };
