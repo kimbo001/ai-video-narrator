@@ -6,14 +6,14 @@ import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSafeUser();
-  const userId = user?.id ?? '';
-  const userEmail = user?.emailAddresses[0]?.emailAddress ?? '';
+  const userId = user?.id ?? 'anon_' + Math.random().toString(36).substr(2, 9);
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? '';
 
-  // Your Lemon Squeezy Variant IDs
+  // Your Lemon Squeezy Variant IDs (numeric)
   const lsVariantIds = {
-    'New Tuber': import.meta.env.VITE_LEMON_NEW_TUBER || '1160511',
-    'Creator': import.meta.env.VITE_LEMON_CREATOR || '1160512',
-    'Pro': import.meta.env.VITE_LEMON_PRO || '1160514',
+    'New Tuber': parseInt(import.meta.env.VITE_LEMON_NEW_TUBER || '1160511', 10),
+    'Creator': parseInt(import.meta.env.VITE_LEMON_CREATOR || '1160512', 10),
+    'Pro': parseInt(import.meta.env.VITE_LEMON_PRO || '1160514', 10),
   };
 
   const tiers = [
@@ -104,24 +104,34 @@ const Pricing: React.FC = () => {
     },
   ];
 
-  // Direct embedded checkout - smooth popup
-  const startLemonCheckout = (tierName: 'New Tuber' | 'Creator' | 'Pro') => {
+  // ✅ CORRECT: Use your /api/checkout route
+  const startLemonCheckout = async (tierName: 'New Tuber' | 'Creator' | 'Pro') => {
     const variantId = lsVariantIds[tierName];
     if (!variantId) {
       alert('This plan is not available yet.');
       return;
     }
 
-    let url = `https://aivideonarrator.lemonsqueezy.com/checkout/buy/${variantId}?embed=1&media=0`;
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId, userId, userEmail }),
+      });
 
-    if (userEmail) {
-      url += `&checkout[email]=${encodeURIComponent(userEmail)}`;
-    }
-    if (userId) {
-      url += `&checkout[custom][user_id]=${userId}`;
-    }
+      const data = await response.json();
 
-    window.location.href = url; // Triggers overlay thanks to lemon.js
+      if (response.ok && data.url) {
+        // ✅ Redirect to real Lemon Squeezy checkout
+        window.location.href = data.url;
+      } else {
+        alert('Checkout failed. Please try again.');
+        console.error('API Error:', data);
+      }
+    } catch (error) {
+      console.error('Network Error:', error);
+      alert('Failed to connect. Please try again.');
+    }
   };
 
   return (
@@ -195,7 +205,7 @@ const Pricing: React.FC = () => {
             ) : (
               <button
                 onClick={() => startLemonCheckout(tier.name as 'New Tuber' | 'Creator' | 'Pro')}
-                className="lemonsqueezy-button w-full py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white"
+                className="w-full py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white"
               >
                 {tier.cta}
               </button>
@@ -204,7 +214,7 @@ const Pricing: React.FC = () => {
         ))}
       </div>
 
-      {/* Optional: Remove or update old FAQ */}
+      {/* Optional: Keep or remove FAQ */}
       <div className="max-w-4xl mx-auto mt-16">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
         <div className="space-y-4">
