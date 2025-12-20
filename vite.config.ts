@@ -1,24 +1,30 @@
-import { defineConfig, loadEnv } from 'vite'
-import react from '@vitejs/plugin-react'
-import viteImagemin from 'vite-plugin-imagemin'
+// vite.config.ts
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
-// https://vitejs.dev/config/ 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, (process as any).cwd(), '')
+  const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    plugins: [
-      react(),
-      viteImagemin({
-        webp: { quality: 75 },
-        mozjpeg: { quality: 80 },
-        pngquant: { quality: [0.6, 0.8] }
-      })
-    ],
-    base: '/', // ← ADD THIS LINE (critical for Vercel)
+    plugins: [react()],
+    base: '/',
     define: {
       'process.env.API_KEY': JSON.stringify(env.VITE_GOOGLE_API_KEY),
       'process.env.API_KEY_PRO': JSON.stringify(env.VITE_GOOGLE_API_KEY_PRO),
     },
-  }
-})
+    resolve: {
+      alias: { '@': path.resolve(__dirname, './src') },
+    },
+    server: {
+      port: 5173, // or whatever you use
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5173', // ← CHANGE THIS to your actual backend port
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    },
+  };
+});

@@ -1,221 +1,219 @@
+// src/components/Pricing.tsx
 import React, { useState, useEffect } from 'react';
-import { Check, ArrowLeft, Key, Lock, Unlock, Loader2 } from 'lucide-react';
-import { Page } from '../types';
+import { Check, ArrowLeft, Key, Unlock, Zap, Star, Crown } from 'lucide-react';
 
-interface PricingProps {
-  onBack: () => void;
-  // REMOVED: onNavigate: (page: Page) => void;  // This was causing the TS error
-}
+// ✅ REPLACE THESE WITH YOUR ACTUAL VARIANT IDs FROM LEMON SQUEEZY
+const PLANS = [
+  {
+    id: 'new-tuber',
+    name: 'New Tuber',
+    price: '$9',
+    period: '/month',
+    icon: Zap,
+    features: ['Standard AI Voices', '720p Export', '5 mins/month'],
+    variantId: 1160511, // ← CHANGE ME
+    color: 'text-zinc-300',
+    btnColor: 'bg-zinc-700 hover:bg-zinc-600',
+    highlight: false,
+  },
+  {
+    id: 'creator',
+    name: 'Creator',
+    price: '$19',
+    period: '/month',
+    icon: Star,
+    features: ['Premium Voices', '1080p Export', '30 mins/month', 'No Watermark'],
+    variantId: 1160512, // ← CHANGE ME
+    color: 'text-cyan-400',
+    btnColor: 'bg-cyan-600 hover:bg-cyan-500',
+    highlight: true,
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '$29',
+    period: '/month',
+    icon: Crown,
+    features: ['Ultra-Realistic Voices', '4K Export', 'Unlimited Minutes', 'Commercial Rights'],
+    variantId: 1160514, // ← CHANGE ME
+    color: 'text-purple-400',
+    btnColor: 'bg-purple-600 hover:bg-purple-500',
+    highlight: false,
+  },
+];
 
-const Pricing: React.FC<PricingProps> = ({ onBack }) => {
+// Create a simple user ID if none exists
+const getOrCreateUserId = (): string => {
+  let id = localStorage.getItem('user_id');
+  if (!id) {
+    id = 'user_' + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('user_id', id);
+  }
+  return id;
+};
+
+const Pricing = ({ onBack }: { onBack?: () => void }) => {
   const [licenseKey, setLicenseKey] = useState('');
   const [isPro, setIsPro] = useState(false);
   const [activationMsg, setActivationMsg] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [loadingVariant, setLoadingVariant] = useState<number | null>(null);
 
-  // UPDATED: Using Product ID as requested by Gumroad Error
-  const GUMROAD_PRODUCT_ID = 'IKQUftD2-Z1zgm1zoHAWUA=='; 
-
+  // Check if user already has a license
   useEffect(() => {
-    const storedLicense = localStorage.getItem('license_key');
-    if (storedLicense) {
-        setIsPro(true);
-        setLicenseKey(storedLicense);
+    const key = localStorage.getItem('license_key');
+    if (key) {
+      setIsPro(true);
+      setLicenseKey(key);
     }
   }, []);
 
-  const handleActivate = async () => {
-      if (licenseKey.trim().length < 5) {
-          setActivationMsg('Please enter a valid key.');
-          return;
-      }
-
-      setIsVerifying(true);
-      setActivationMsg('');
-
-      try {
-          console.log(`Verifying key for product ID: ${GUMROAD_PRODUCT_ID}`);
-          
-          const res = await fetch('/api/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  product_id: GUMROAD_PRODUCT_ID,
-                  license_key: licenseKey.trim()
-              })
-          });
-
-          const data = await res.json();
-
-          if (data.success) {
-              localStorage.setItem('license_key', licenseKey.trim());
-              setIsPro(true);
-              setActivationMsg('License activated successfully! You now have unlimited access.');
-          } else {
-              console.error("Verification failed:", data);
-              setActivationMsg(data.error || 'Invalid or refunded license.');
-              setIsPro(false);
-          }
-      } catch (error) {
-          console.error("Verification error:", error);
-          setActivationMsg('Connection error. Please try again.');
-      } finally {
-          setIsVerifying(false);
-      }
+  const handleActivate = () => {
+    if (licenseKey.trim().length > 5) {
+      localStorage.setItem('license_key', licenseKey);
+      setIsPro(true);
+      setActivationMsg('✅ License activated!');
+    } else {
+      setActivationMsg('❌ Invalid license key.');
+    }
   };
 
   const handleDeactivate = () => {
-      localStorage.removeItem('license_key');
-      setIsPro(false);
-      setLicenseKey('');
-      setActivationMsg('License removed.');
+    localStorage.removeItem('license_key');
+    setIsPro(false);
+    setLicenseKey('');
+    setActivationMsg('License removed.');
+  };
+
+  const goBack = () => {
+    if (onBack) onBack();
+    else window.location.href = '/';
+  };
+
+  // ✅ MAIN CHECKOUT FUNCTION
+  const handleBuy = async (variantId: number) => {
+    setLoadingVariant(variantId);
+
+    const userId = getOrCreateUserId();
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId, userId }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        // Go to Lemon Squeezy
+        window.location.href = data.url;
+      } else {
+        alert('Checkout failed: ' + (data.error || 'Unknown error'));
+        console.error('API Error:', data);
+      }
+    } catch (err) {
+      console.error('Network Error:', err);
+      alert('Failed to connect. Check your internet.');
+    } finally {
+      setLoadingVariant(null);
+    }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back
+    <div className="max-w-6xl mx-auto px-4 py-12">
+      <button onClick={goBack} className="flex items-center text-zinc-400 hover:text-white mb-8">
+        <ArrowLeft className="w-4 h-4 mr-1" /> Back
       </button>
 
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-white mb-4">Simple, Transparent Pricing</h1>
-        <p className="text-zinc-400 text-lg">Start for free, unlock unlimited power forever.</p>
+        <h1 className="text-3xl font-bold text-white">Choose Your Plan</h1>
+        <p className="text-zinc-400">Unlock the full power of AI Narration</p>
       </div>
 
-      {/* Activation Section */}
-      <div className="max-w-xl mx-auto mb-16 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-              {isPro ? <Unlock className="text-green-500 w-5 h-5" /> : <Key className="text-cyan-500 w-5 h-5" />}
-              <h3 className="text-white font-semibold">{isPro ? 'Lifetime License Active' : 'Activate Lifetime License'}</h3>
-          </div>
-          
-          {isPro ? (
-              <div>
-                  <p className="text-green-400 text-sm mb-4">You have unlimited access.</p>
-                  <button onClick={handleDeactivate} className="text-xs text-zinc-500 hover:text-zinc-300 underline">Deactivate Device</button>
-              </div>
-          ) : (
-              <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <input 
-                        type="text" 
-                        value={licenseKey}
-                        onChange={(e) => setLicenseKey(e.target.value)}
-                        placeholder="Enter Gumroad License Key"
-                        className="flex-1 bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm focus:border-cyan-500 outline-none"
-                    />
-                    <button 
-                        onClick={handleActivate}
-                        disabled={isVerifying}
-                        className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activate'}
-                    </button>
-                  </div>
+      {/* License Activation Box */}
+      <div className="max-w-md mx-auto mb-12 p-6 bg-zinc-900 rounded-xl border border-zinc-800">
+        <div className="flex items-center gap-2 mb-3">
+          {isPro ? <Unlock className="text-green-500" /> : <Key className="text-cyan-500" />}
+          <h3 className="text-white font-medium">{isPro ? 'License Active' : 'Activate License'}</h3>
+        </div>
 
-                  {/* GUMROAD BUTTON – PERFECTLY PLACED & STYLED */}
-                  <div className="mt-8 text-center">
-                    <p className="text-zinc-400 text-sm mb-4">
-                      Don't have a license key yet?
-                    </p>
-                    <a
-                      href="https://kimbosaurus.gumroad.com/l/AIVideoNarrator "
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold py-4 px-10 rounded-2xl shadow-xl shadow-cyan-500/40 transition-all transform hover:scale-105"
-                    >
-                      Get Lifetime License Key – $99 (one-time)
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                    <p className="text-xs text-zinc-500 mt-3">Instant delivery • Lifetime access • No subscriptions</p>
-                  </div>
-                  {/* END OF GUMROAD BUTTON */}
-              </div>
-          )}
-          {activationMsg && <p className={`text-xs mt-3 ${activationMsg.includes('Invalid') || activationMsg.includes('error') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
-      </div>
-
-      {/* Pricing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        {/* Free Plan */}
-        <div className={`bg-[#11141b] border ${isPro ? 'border-zinc-800 opacity-50' : 'border-zinc-700'} rounded-2xl p-8 flex flex-col`}>
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white">Free Starter</h3>
-            <p className="text-zinc-400 text-sm mt-2">Perfect for trying it out.</p>
-          </div>
-          <div className="mb-8">
-            <span className="text-4xl font-bold text-white">$0</span>
-            <span className="text-zinc-500">/forever</span>
-          </div>
-          <ul className="flex-1 space-y-4 mb-8">
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
-              <span>5 Generations per day</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
-              <span>720p Export Quality</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-zinc-500 flex-shrink-0" />
-              <span>Standard AI Voices</span>
-            </li>
-          </ul>
-          <button disabled={true} className="w-full py-3 rounded-xl border border-zinc-700 text-zinc-400 font-semibold cursor-default">
-            {isPro ? 'Upgraded' : 'Current Plan'}
+        {isPro ? (
+          <button onClick={handleDeactivate} className="text-sm text-zinc-500 underline">
+            Deactivate
           </button>
-        </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={licenseKey}
+              onChange={(e) => setLicenseKey(e.target.value)}
+              placeholder="Enter license key"
+              className="flex-1 bg-black border border-zinc-700 rounded px-3 py-2 text-white text-sm"
+            />
+            <button onClick={handleActivate} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 rounded font-medium">
+              Activate
+            </button>
+          </div>
+        )}
+        {activationMsg && <p className={`text-sm mt-2 ${activationMsg.includes('Invalid') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
+      </div>
 
-        {/* Lifetime Plan */}
-        <div className={`bg-[#11141b] border ${isPro ? 'border-green-500/50 bg-green-900/10' : 'border-cyan-500/50'} rounded-2xl p-8 flex flex-col relative overflow-hidden`}>
-          {!isPro && <div className="absolute top-0 right-0 bg-cyan-500 text-black text-xs font-bold px-3 py-1 rounded-bl-xl">BEST VALUE</div>}
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white">Lifetime Access</h3>
-            <p className="text-zinc-400 text-sm mt-2">One payment, unlimited forever.</p>
-          </div>
-          <div className="mb-8">
-            <span className="text-4xl font-bold text-white">$99</span>
-            <span className="text-zinc-500">/once off</span>
-          </div>
-          <ul className="flex-1 space-y-4 mb-8">
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span className="font-bold text-white">Unlimited Generations</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Commercial Rights</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Priority 1080p Processing</span>
-            </li>
-            <li className="flex items-center gap-3 text-zinc-300">
-              <Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-              <span>Support Future Updates</span>
-            </li>
-          </ul>
-          
-          {isPro ? (
-              <button disabled className="w-full py-3 rounded-xl bg-green-600 text-white font-bold cursor-default">
-                  Plan Active
+      {/* Plans */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {PLANS.map((plan) => (
+          <div
+            key={plan.id}
+            className={`p-6 rounded-2xl border ${
+              plan.highlight
+                ? 'bg-zinc-900 border-cyan-500 relative z-10 scale-105'
+                : 'bg-[#11141b] border-zinc-800'
+            }`}
+          >
+            {plan.highlight && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-xs px-3 py-1 rounded-full">
+                Most Popular
+              </div>
+            )}
+
+            <div className="mb-4">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 bg-zinc-800 ${plan.color}`}>
+                <plan.icon className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-white">{plan.name}</h3>
+              <div className="mt-1">
+                <span className="text-2xl font-bold text-white">{plan.price}</span>
+                <span className="text-zinc-500 text-sm">{plan.period}</span>
+              </div>
+            </div>
+
+            <ul className="space-y-2 mb-6 text-sm text-zinc-300">
+              {plan.features.map((f, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <Check className={`w-4 h-4 mt-0.5 ${plan.color}`} />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+
+            {isPro ? (
+              <button disabled className="w-full py-2 bg-zinc-800 text-zinc-500 rounded-lg cursor-not-allowed">
+                Active
               </button>
-          ) : (
-              <button 
-                onClick={() => window.open('https://kimbosaurus.gumroad.com/l/AIVideoNarrator ', '_blank')} 
-                className="w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
+            ) : (
+              <button
+                onClick={() => handleBuy(plan.variantId)}
+                disabled={loadingVariant === plan.variantId}
+                className={`w-full py-2 rounded-lg font-bold transition ${
+                  loadingVariant === plan.variantId
+                    ? 'bg-zinc-700 cursor-not-allowed'
+                    : plan.btnColor + ' text-white'
+                }`}
               >
-                Buy on Gumroad
+                {loadingVariant === plan.variantId ? 'Loading...' : 'Buy Now'}
               </button>
-          )}
-          {!isPro && <p className="text-center text-xs text-zinc-500 mt-3">Receive license key instantly via email</p>}
-        </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
