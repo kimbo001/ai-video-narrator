@@ -1,5 +1,10 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "version": 2,
+  "builds": [
+    { "src": "api/checkout.ts", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/checkout", "dest": "api/checkout.ts" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
