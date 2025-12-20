@@ -1,219 +1,233 @@
-// src/components/Pricing.tsx
-import React, { useState, useEffect } from 'react';
-import { Check, ArrowLeft, Key, Unlock, Zap, Star, Crown } from 'lucide-react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSafeUser } from '../lib/useSafeUser';
+import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
 
-// ✅ REPLACE THESE WITH YOUR ACTUAL VARIANT IDs FROM LEMON SQUEEZY
-const PLANS = [
-  {
-    id: 'new-tuber',
-    name: 'New Tuber',
-    price: '$9',
-    period: '/month',
-    icon: Zap,
-    features: ['Standard AI Voices', '720p Export', '5 mins/month'],
-    variantId: 1160511, // ← CHANGE ME
-    color: 'text-zinc-300',
-    btnColor: 'bg-zinc-700 hover:bg-zinc-600',
-    highlight: false,
-  },
-  {
-    id: 'creator',
-    name: 'Creator',
-    price: '$19',
-    period: '/month',
-    icon: Star,
-    features: ['Premium Voices', '1080p Export', '30 mins/month', 'No Watermark'],
-    variantId: 1160512, // ← CHANGE ME
-    color: 'text-cyan-400',
-    btnColor: 'bg-cyan-600 hover:bg-cyan-500',
-    highlight: true,
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '$29',
-    period: '/month',
-    icon: Crown,
-    features: ['Ultra-Realistic Voices', '4K Export', 'Unlimited Minutes', 'Commercial Rights'],
-    variantId: 1160514, // ← CHANGE ME
-    color: 'text-purple-400',
-    btnColor: 'bg-purple-600 hover:bg-purple-500',
-    highlight: false,
-  },
-];
+const Pricing: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useSafeUser();
+  const userId = user?.id ?? '';
+  const userEmail = user?.emailAddresses[0]?.emailAddress ?? '';
 
-// Create a simple user ID if none exists
-const getOrCreateUserId = (): string => {
-  let id = localStorage.getItem('user_id');
-  if (!id) {
-    id = 'user_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('user_id', id);
-  }
-  return id;
-};
-
-const Pricing = ({ onBack }: { onBack?: () => void }) => {
-  const [licenseKey, setLicenseKey] = useState('');
-  const [isPro, setIsPro] = useState(false);
-  const [activationMsg, setActivationMsg] = useState('');
-  const [loadingVariant, setLoadingVariant] = useState<number | null>(null);
-
-  // Check if user already has a license
-  useEffect(() => {
-    const key = localStorage.getItem('license_key');
-    if (key) {
-      setIsPro(true);
-      setLicenseKey(key);
-    }
-  }, []);
-
-  const handleActivate = () => {
-    if (licenseKey.trim().length > 5) {
-      localStorage.setItem('license_key', licenseKey);
-      setIsPro(true);
-      setActivationMsg('✅ License activated!');
-    } else {
-      setActivationMsg('❌ Invalid license key.');
-    }
+  // Your Lemon Squeezy Variant IDs
+  const lsVariantIds = {
+    'New Tuber': import.meta.env.VITE_LEMON_NEW_TUBER || '1160511',
+    'Creator': import.meta.env.VITE_LEMON_CREATOR || '1160512',
+    'Pro': import.meta.env.VITE_LEMON_PRO || '1160514',
   };
 
-  const handleDeactivate = () => {
-    localStorage.removeItem('license_key');
-    setIsPro(false);
-    setLicenseKey('');
-    setActivationMsg('License removed.');
-  };
+  const tiers = [
+    {
+      name: 'Free',
+      price: '$0',
+      period: '/month',
+      description: 'Perfect for getting started',
+      autoDaily: 3,
+      manualDaily: 0.5,
+      features: [
+        '3 AI-generated videos daily',
+        '1 manual video every 48 hours',
+        '720p export quality',
+        'Standard AI voices',
+        'Basic stock footage',
+      ],
+      cta: 'Start Creating Free',
+      popular: false,
+      isFree: true,
+    },
+    {
+      name: 'New Tuber',
+      price: '$10',
+      period: '/month',
+      description: 'For serious creators',
+      autoDaily: 5,
+      manualDaily: 5,
+      features: [
+        '5 AI-generated videos daily',
+        '5 manual videos daily',
+        '1080p export quality',
+        'Premium AI voices',
+        'Extended stock footage',
+        'Commercial usage rights',
+        'Priority processing',
+      ],
+      cta: 'Start New Tuber',
+      popular: true,
+      isFree: false,
+    },
+    {
+      name: 'Creator',
+      price: '$25',
+      period: '/month',
+      description: 'For growing channels',
+      autoDaily: 25,
+      manualDaily: 25,
+      features: [
+        '25 AI-generated videos daily',
+        '25 manual videos daily',
+        '4K export quality',
+        'All AI voices + custom',
+        'Premium stock footage',
+        'Commercial usage rights',
+        'Priority processing',
+        'Advanced editing tools',
+        'Analytics dashboard',
+      ],
+      cta: 'Start Creator',
+      popular: false,
+      isFree: false,
+    },
+    {
+      name: 'Pro',
+      price: '$50',
+      period: '/month',
+      description: 'For professionals',
+      autoDaily: 'Unlimited',
+      manualDaily: 'Unlimited',
+      features: [
+        'Unlimited AI-generated videos',
+        'Unlimited manual videos',
+        '4K+ export quality',
+        'All AI voices + custom',
+        'Premium stock footage',
+        'Commercial usage rights',
+        'Priority processing',
+        'Advanced editing tools',
+        'Analytics dashboard',
+        'API access',
+        'White-label options',
+        'Dedicated support',
+      ],
+      cta: 'Start Pro',
+      popular: false,
+      isFree: false,
+    },
+  ];
 
-  const goBack = () => {
-    if (onBack) onBack();
-    else window.location.href = '/';
-  };
-
-  // ✅ MAIN CHECKOUT FUNCTION
-  const handleBuy = async (variantId: number) => {
-    setLoadingVariant(variantId);
-
-    const userId = getOrCreateUserId();
-
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, userId }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.url) {
-        // Go to Lemon Squeezy
-        window.location.href = data.url;
-      } else {
-        alert('Checkout failed: ' + (data.error || 'Unknown error'));
-        console.error('API Error:', data);
-      }
-    } catch (err) {
-      console.error('Network Error:', err);
-      alert('Failed to connect. Check your internet.');
-    } finally {
-      setLoadingVariant(null);
+  // Direct embedded checkout - smooth popup
+  const startLemonCheckout = (tierName: 'New Tuber' | 'Creator' | 'Pro') => {
+    const variantId = lsVariantIds[tierName];
+    if (!variantId) {
+      alert('This plan is not available yet.');
+      return;
     }
+
+    let url = `https://aivideonarrator.lemonsqueezy.com/checkout/buy/${variantId}?embed=1&media=0`;
+
+    if (userEmail) {
+      url += `&checkout[email]=${encodeURIComponent(userEmail)}`;
+    }
+    if (userId) {
+      url += `&checkout[custom][user_id]=${userId}`;
+    }
+
+    window.location.href = url; // Triggers overlay thanks to lemon.js
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
-      <button onClick={goBack} className="flex items-center text-zinc-400 hover:text-white mb-8">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <button 
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
       </button>
 
       <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-white">Choose Your Plan</h1>
-        <p className="text-zinc-400">Unlock the full power of AI Narration</p>
+        <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+          Create Videos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">That Actually Get Views</span>
+        </h1>
+        <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          From text to viral content in seconds. No face required.
+        </p>
       </div>
 
-      {/* License Activation Box */}
-      <div className="max-w-md mx-auto mb-12 p-6 bg-zinc-900 rounded-xl border border-zinc-800">
-        <div className="flex items-center gap-2 mb-3">
-          {isPro ? <Unlock className="text-green-500" /> : <Key className="text-cyan-500" />}
-          <h3 className="text-white font-medium">{isPro ? 'License Active' : 'Activate License'}</h3>
-        </div>
-
-        {isPro ? (
-          <button onClick={handleDeactivate} className="text-sm text-zinc-500 underline">
-            Deactivate
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={licenseKey}
-              onChange={(e) => setLicenseKey(e.target.value)}
-              placeholder="Enter license key"
-              className="flex-1 bg-black border border-zinc-700 rounded px-3 py-2 text-white text-sm"
-            />
-            <button onClick={handleActivate} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 rounded font-medium">
-              Activate
-            </button>
-          </div>
-        )}
-        {activationMsg && <p className={`text-sm mt-2 ${activationMsg.includes('Invalid') ? 'text-red-400' : 'text-green-400'}`}>{activationMsg}</p>}
-      </div>
-
-      {/* Plans */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {PLANS.map((plan) => (
-          <div
-            key={plan.id}
-            className={`p-6 rounded-2xl border ${
-              plan.highlight
-                ? 'bg-zinc-900 border-cyan-500 relative z-10 scale-105'
-                : 'bg-[#11141b] border-zinc-800'
-            }`}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        {tiers.map((tier) => (
+          <div 
+            key={tier.name}
+            className={`bg-[#11141b] border ${tier.popular ? 'border-yellow-500/50' : 'border-zinc-800'} rounded-2xl p-6 flex flex-col relative`}
           >
-            {plan.highlight && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-xs px-3 py-1 rounded-full">
-                Most Popular
+            {tier.popular && (
+              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-bl-lg">
+                POPULAR
               </div>
             )}
-
+            
             <div className="mb-4">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 bg-zinc-800 ${plan.color}`}>
-                <plan.icon className="w-5 h-5" />
+              <h3 className="text-xl font-semibold text-white">{tier.name}</h3>
+              <p className="text-zinc-400 text-sm mt-1">{tier.description}</p>
+            </div>
+            
+            <div className="mb-6">
+              <span className="text-3xl font-bold text-white">{tier.price}</span>
+              <span className="text-zinc-500 text-sm"> {tier.period}</span>
+            </div>
+
+            <div className="mb-6 bg-zinc-900/50 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-zinc-400 text-sm">AI Videos Daily</span>
+                <span className="text-white font-bold">{tier.autoDaily}</span>
               </div>
-              <h3 className="font-bold text-white">{plan.name}</h3>
-              <div className="mt-1">
-                <span className="text-2xl font-bold text-white">{plan.price}</span>
-                <span className="text-zinc-500 text-sm">{plan.period}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-400 text-sm">Manual Videos Daily</span>
+                <span className="text-white font-bold">{tier.manualDaily}</span>
               </div>
             </div>
 
-            <ul className="space-y-2 mb-6 text-sm text-zinc-300">
-              {plan.features.map((f, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <Check className={`w-4 h-4 mt-0.5 ${plan.color}`} />
-                  <span>{f}</span>
+            <ul className="flex-1 space-y-3 mb-6">
+              {tier.features.map((feature, idx) => (
+                <li key={idx} className="flex items-center gap-2 text-zinc-300 text-sm">
+                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <span>{feature}</span>
                 </li>
               ))}
             </ul>
 
-            {isPro ? (
-              <button disabled className="w-full py-2 bg-zinc-800 text-zinc-500 rounded-lg cursor-not-allowed">
-                Active
+            {tier.isFree ? (
+              <button 
+                onClick={() => navigate('/generator')}
+                className="w-full py-3 rounded-xl font-semibold transition-all bg-zinc-700 text-white hover:bg-zinc-600"
+              >
+                {tier.cta}
               </button>
             ) : (
               <button
-                onClick={() => handleBuy(plan.variantId)}
-                disabled={loadingVariant === plan.variantId}
-                className={`w-full py-2 rounded-lg font-bold transition ${
-                  loadingVariant === plan.variantId
-                    ? 'bg-zinc-700 cursor-not-allowed'
-                    : plan.btnColor + ' text-white'
-                }`}
+                onClick={() => startLemonCheckout(tier.name as 'New Tuber' | 'Creator' | 'Pro')}
+                className="lemonsqueezy-button w-full py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white"
               >
-                {loadingVariant === plan.variantId ? 'Loading...' : 'Buy Now'}
+                {tier.cta}
               </button>
             )}
           </div>
         ))}
+      </div>
+
+      {/* Optional: Remove or update old FAQ */}
+      <div className="max-w-4xl mx-auto mt-16">
+        <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
+        <div className="space-y-4">
+          <div className="bg-zinc-800 p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-2">How does the daily limit work?</h3>
+            <p className="text-zinc-400">Limits reset every 24 hours. Paid plans get higher or unlimited generations.</p>
+          </div>
+          <div className="bg-zinc-800 p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-2">Can I cancel anytime?</h3>
+            <p className="text-zinc-400">Yes — cancel anytime from your account. Access continues until end of billing period.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center mt-16">
+        <button 
+          onClick={() => navigate('/generator')}
+          className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-lg rounded-xl shadow-xl shadow-cyan-500/40 transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
+        >
+          <Play className="w-5 h-5" />
+          Start Creating Free
+        </button>
+        <p className="text-zinc-400 text-sm mt-4">No credit card required • Instant access</p>
       </div>
     </div>
   );

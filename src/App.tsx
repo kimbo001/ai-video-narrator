@@ -107,7 +107,8 @@ const AppRoutes: React.FC = () => (
     <Route path="/generator" element={<Generator onBack={() => window.history.back()} />} />
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/play" element={<PlayPage />} />
-    <Route path="/legal" element={<Legal />} />
+    {/* FIXED: Pass the required 'page' prop to Legal */}
+    <Route path="/legal" element={<Legal page="terms" />} />
     {import.meta.env.VITE_CLERK_PUBLISHABLE_KEY && (
       <>
         <Route path="/sign-in/*" element={<RedirectToSignIn />} />
