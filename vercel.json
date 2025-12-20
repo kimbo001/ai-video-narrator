@@ -1,12 +1,11 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/checkout.ts", "use": "@vercel/node" },
-    { "src": "package.json", "use": "@vercel/static-build" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "routes": [
-    { "src": "/api/checkout", "dest": "api/checkout.ts" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "headers": [
+    {
+      "source": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot))",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    }
   ]
 }
