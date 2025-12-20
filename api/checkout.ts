@@ -2,30 +2,42 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { variantId, userId } = req.body;
+  const { variantId, userId, userEmail } = req.body || {};
 
-  // Validate input
   if (!variantId || !userId) {
     return res.status(400).json({ error: 'Missing variantId or userId' });
   }
 
-  // Get environment variables
+  // ✅ Add validation: ensure variantId is a number
+  const variantIdNum = parseInt(variantId, 10);
+  if (isNaN(variantIdNum)) {
+    return res.status(400).json({ error: 'Invalid variantId: must be a number' });
+  }
+
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
   const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
 
-  if (!apiKey || !storeId) {
-    console.error('❌ Missing Lemon Squeezy env vars');
-    return res.status(500).json({ error: 'Server misconfigured' });
+  // ✅ Return JSON error if missing
+  if (!apiKey) {
+    console.error('❌ LEMON_SQUEEZY_API_KEY is missing');
+    return res.status(500).json({ error: 'Server misconfigured: missing API key' });
+  }
+  if (!storeId) {
+    console.error('❌ LEMON_SQUEEZY_STORE_ID is missing');
+    return res.status(500).json({ error: 'Server misconfigured: missing store ID' });
   }
 
   try {
-    // Create checkout via Lemon Squeezy API
-    const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
+    const storeIdNum = parseInt(storeId, 10);
+    if (isNaN(storeIdNum)) {
+      return res.status(500).json({ error: 'Invalid STORE_ID: must be a number' });
+    }
+
+    const lemonRes = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -36,9 +48,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          {
           type: 'checkouts',
           attributes: {
-            store_id: parseInt(storeId),
-            variant_id: parseInt(variantId),
+            store_id: storeIdNum,
+            variant_id: variantIdNum,
             checkout_ {
+              email: userEmail || undefined,
               custom: { user_id: userId },
             },
             product_options: {
@@ -50,18 +63,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }),
     });
 
-    const data = await response.json();
+    const data = await lemonRes.json();
 
-    if (!response.ok) {
-      console.error('Lemon API error:', data);
-      return res.status(response.status).json({ error: 'Failed to create checkout' });
+    if (!lemonRes.ok) {
+      console.error('🍋 Lemon Squeezy API error:', data);
+      return res.status(lemonRes.status).json({ error: 'Failed to create checkout', details: data });
     }
 
-    // Return the checkout URL to frontend
     res.status(200).json({ url: data.data.attributes.url });
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('💥 Unexpected error in /api/checkout:', error.message || error);
+    // ✅ Always return JSON, never let it crash to HTML
+    res.status(500).json({ error: 'Internal server error', message: error.message || 'Unknown' });
   }
 }
 
