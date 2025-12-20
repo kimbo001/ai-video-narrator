@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // Added useEffect
 import { useNavigate } from 'react-router-dom';
 import { useSafeUser } from '../lib/useSafeUser';
 import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
+
+// 1. Tell TypeScript that LemonSqueezy exists on the window object
+declare global {
+  interface Window {
+    createLemonSqueezy: () => void;
+    LemonSqueezy: {
+      Url: {
+        Open: (url: string) => void;
+      };
+      Setup: (config: { eventHandler: (event: any) => void }) => void;
+    };
+  }
+}
 
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSafeUser();
   const userId = user?.id ?? 'anon_' + Math.random().toString(36).substr(2, 9);
   const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? '';
+
+  // 2. Initialize Lemon Squeezy when the component mounts
+  useEffect(() => {
+    if (window.createLemonSqueezy) {
+      window.createLemonSqueezy();
+    }
+  }, []);
 
   // Your Lemon Squeezy Variant IDs (numeric)
   const lsVariantIds = {
@@ -104,7 +124,7 @@ const Pricing: React.FC = () => {
     },
   ];
 
-  // ✅ CORRECT: Use your /api/checkout route
+  // ✅ UPDATED: Use Lemon Squeezy Popup Overlay
   const startLemonCheckout = async (tierName: 'New Tuber' | 'Creator' | 'Pro') => {
     const variantId = lsVariantIds[tierName];
     if (!variantId) {
@@ -122,8 +142,13 @@ const Pricing: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.url) {
-        // ✅ Redirect to real Lemon Squeezy checkout
-        window.location.href = data.url;
+        // ✅ FIXED: Instead of redirecting the whole page, we open the Overlay
+        if (window.LemonSqueezy) {
+            window.LemonSqueezy.Url.Open(data.url);
+        } else {
+            // Fallback if the script failed to load
+            window.location.href = data.url;
+        }
       } else {
         alert('Checkout failed. Please try again.');
         console.error('API Error:', data);
@@ -214,7 +239,6 @@ const Pricing: React.FC = () => {
         ))}
       </div>
 
-      {/* Optional: Keep or remove FAQ */}
       <div className="max-w-4xl mx-auto mt-16">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
         <div className="space-y-4">
