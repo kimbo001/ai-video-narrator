@@ -1,36 +1,25 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+  // The 'url' line is REMOVED from here
 }
 
-model UserStats {
-  userId            String
-  date              String
-  autoVideosToday   Int     @default(0)
-  manualVideosToday Int     @default(0)
-  manualVideos48h   Int     @default(0)
-  @@id([userId, date])
+model User {
+  id              String   @id @default(cuid())
+  clerkId         String   @unique
+  email           String   @unique
+  plan            String   @default("FREE")
+  lemonVariantId  String?
+  videos          Video[]
+  createdAt       DateTime @default(now())
 }
 
-model Subscription {
-  id          String   @id @default(cuid())
-  userId      String
-  planId      String
-  status      String
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Video {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
-model FlappyScore {
-  id         String   @id @default(uuid())
-  userId     String
-  score      Int
-  seed       Int
-  createdAt  DateTime @default(now())
-  @@index([userId, createdAt])
-}
-

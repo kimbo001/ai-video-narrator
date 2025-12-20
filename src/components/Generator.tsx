@@ -1,6 +1,6 @@
 // src/components/Generator.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { useSafeUser } from '../lib/useSafeUser';          // ← NEW
+import { useSafeUser } from '../lib/useSafeUser';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
 import { analyzeScript, generateNarration } from '../services/gemini';
@@ -41,39 +41,61 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [scenes, setScenes] = useState<Scene[]>([]);
   
   const [isManualMode, setIsManualMode] = useState(false);
-
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
   const [musicFile, setMusicFile] = useState<File | null>(null);
   const [musicVolume, setMusicVolume] = useState<number>(0.15);
-
   const [customUploads, setCustomUploads] = useState<UploadedFile[]>([]);
   
+  // --- DATABASE & LIMIT STATES ---
   const [generationsToday, setGenerationsToday] = useState(0);
-  const [isPro, setIsPro] = useState(false);
+  const [maxLimit, setMaxLimit] = useState(3);
+  const [userPlan, setUserPlan] = useState('FREE');
 
-  // REAL USER ID -----------------------------------------------------------
   const { user } = useSafeUser();
   const userId = user?.id ?? '';
-  //-------------------------------------------------------------------------
 
+  // 1. Fetch usage from Prisma Backend
   const fetchUsage = async () => {
+    if (!userId) return;
     try {
-      const res = await fetch(`/api/limits?userId=${userId}&type=auto`);
+      const res = await fetch(`/api/limits?userId=${userId}`);
       if (!res.ok) return;
       const data = await res.json();
-      setGenerationsToday(data.remaining ? data.remaining.auto : 0);
-    } catch {}
+      setGenerationsToday(data.used);
+      setMaxLimit(data.limit);
+      setUserPlan(data.plan);
+    } catch (err) {
+      console.error("Usage fetch error:", err);
+    }
   };
-  useEffect(() => { fetchUsage(); }, []);
 
-  const checkLimits = async (type: 'auto' | 'manual') => {
-    const res = await fetch(`/api/limits?userId=${userId}&type=${type}`);
-    if (!res.ok) {
-      const { error } = await res.json();
-      alert(error);
+  useEffect(() => { 
+    if (userId) fetchUsage(); 
+  }, [userId]);
+
+  // 2. Check limits before starting generation
+  const checkLimits = async () => {
+    const res = await fetch(`/api/limits?userId=${userId}`);
+    const data = await res.json();
+    if (!data.allowed) {
+      alert(`Daily limit reached for your ${data.plan} plan. Upgrade for more!`);
       return false;
     }
     return true;
+  };
+
+  // 3. Log the successful video to the database
+  const logVideoToDb = async () => {
+    try {
+      await fetch('/api/videos/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      fetchUsage(); // Refresh the counter in the UI
+    } catch (err) {
+      console.error("Failed to log video usage:", err);
+    }
   };
 
   const usedMediaUrlsRef = useRef<Set<string>>(new Set());
@@ -117,13 +139,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   };
 
   const handleGenerate = async () => {
-    const ok = await checkLimits(isManualMode ? 'manual' : 'auto');
+    // SECURITY CHECK: Check limits before burning API tokens
+    const ok = await checkLimits();
     if (!ok) return;
-
-    if (!isPro && generationsToday >= 5) {
-      alert('Daily limit reached (5/5). Upgrade to Lifetime for unlimited videos!');
-      return;
-    }
 
     try {
       setScenes([]);
@@ -190,9 +208,10 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
-      const newCount = generationsToday + 1;
-      setGenerationsToday(newCount);
-      localStorage.setItem('app_usage', JSON.stringify({ date: new Date().toDateString(), count: newCount }));
+
+      // LOG SUCCESS: Save the generation event to Prisma
+      await logVideoToDb();
+
     } catch (error: any) {
       console.error(error);
       setStatus({ step: 'error', message: 'Error generating video.' });
@@ -233,15 +252,19 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           <ArrowLeft className="w-4 h-4" />
           Back to Home
         </button>
-        {!isPro && (
-          <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
-            Daily Limit: <span className={generationsToday >= 5 ? 'text-red-500' : 'text-cyan-500'}>{generationsToday}</span>/5
-          </div>
-        )}
+        
+        {/* DYNAMIC LIMIT BADGE */}
+        <div className="flex gap-2">
+            <div className="text-[10px] font-bold text-zinc-500 bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800">
+               PLAN: <span className="text-cyan-400 uppercase">{userPlan}</span>
+            </div>
+            <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
+                Daily Limit: <span className={generationsToday >= maxLimit ? 'text-red-500' : 'text-cyan-500'}>{generationsToday}</span>/{maxLimit >= 1000 ? '∞' : maxLimit}
+            </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full flex-1 min-h-0">
-        {/* COLUMN 1: Story Script */}
         <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
           <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 flex flex-col shadow-lg h-full">
             <div className="flex items-center justify-between mb-4">
@@ -257,9 +280,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* COLUMN 2: Config & Media */}
         <div className="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-1">
-          {/* 1. TOGGLE (Top of Col 2) */}
           <div className="bg-[#11141b] border border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-lg">
             <span className="text-sm font-bold text-zinc-100">Manual Media Mode</span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -268,7 +289,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             </label>
           </div>
 
-          {/* 2. GENERATE BUTTON */}
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !script.trim()}
@@ -281,10 +301,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             )}
           </button>
 
-          {/* 3. CONDITIONAL CONTENT */}
           {isManualMode ? (
             <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-              {/* Visual Media Library */}
               <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg flex-1 min-h-[200px] flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-white font-semibold text-sm">Your Visual Media</h2>
@@ -320,7 +338,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              {/* Background Music Section */}
               <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-5 shadow-lg">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -373,12 +390,9 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
               </div>
             </div>
           )}
-
-          {/* 4. Global Settings (Always Visible) */}
           <SettingsPanel config={config} onConfigChange={updateConfig} />
         </div>
 
-        {/* COLUMN 3: Preview */}
         <div className="lg:col-span-6 flex flex-col gap-6 h-full overflow-hidden">
           <div className="bg-[#11141b] border border-zinc-800 rounded-2xl p-6 h-full flex flex-col shadow-lg overflow-hidden">
             <div className="flex items-center justify-between mb-4 shrink-0">

@@ -1,46 +1,27 @@
 // api/webhooks/lemon.ts
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import crypto from 'crypto';
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { prisma } from '../../src/lib/prisma';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+  const event = req.body;
+  const eventName = event.meta.event_name;
+  const clerkUserId = event.meta.custom_data.user_id; 
+  const variantId = event.data.attributes.variant_id.toString();
+
+  const plans: Record<string, string> = {
+    "1160511": "NEW_TUBER",
+    "1160512": "CREATOR",
+    "1160514": "PRO"
+  };
+
+  if (eventName === 'subscription_created' || eventName === 'order_created') {
+    const newPlan = plans[variantId] || "FREE";
+
+    await prisma.user.update({
+      where: { clerkId: clerkUserId },
+      data: { plan: newPlan, lemonVariantId: variantId }
+    });
   }
 
-  // Get raw body for signature verification
-  const rawBody = await new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on('data', chunk => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
-  });
-
-  const signature = req.headers['x-signature'] as string;
-  const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
-
-  if (!secret || !signature) {
-    return res.status(401).json({ error: 'Missing secret or signature' });
-  }
-
-  const hmac = crypto.createHmac('sha256', secret);
-  const digest = hmac.update(rawBody).digest('hex');
-
-  if (!crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature))) {
-    return res.status(401).json({ error: 'Invalid signature' });
-  }
-
-  const event = JSON.parse(rawBody.toString());
-
-  console.log('Webhook received:', event.meta?.event_name, 'for user:', event.meta?.custom_data?.user_id);
-
-  // TODO: Handle events (upgrade user in DB)
-  // switch (event.meta?.event_name) { ... }
-
-  res.status(200).json({ success: true });
+  res.status(200).send('Webhook Received');
 }
-
-export const config = {
-  api: {
-    bodyParser: false,  // Critical for raw body
-  },
-};
