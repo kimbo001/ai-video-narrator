@@ -8,22 +8,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { variantId, userId, userEmail } = req.body || {};
 
+  // Ensure we have what we need
   if (!variantId || !userId) {
     return res.status(400).json({ error: 'Missing variantId or userId' });
   }
 
-  const variantIdNum = parseInt(variantId, 10);
-  if (isNaN(variantIdNum)) {
-    return res.status(400).json({ error: 'Invalid variantId: must be a number' });
-  }
-
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
-  const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
-
-  if (!apiKey || !storeId) {
-    console.error('❌ Missing Environment Variables');
-    return res.status(500).json({ error: 'Server misconfigured' });
-  }
+  const storeId = process.env.LEMON_SQUEEZY_STORE_ID; // 251789
 
   try {
     const lemonRes = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
@@ -39,19 +30,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           attributes: {
             checkout_data: {
               email: userEmail || undefined,
-              custom: { user_id: userId },
+              custom: {
+                user_id: userId.toString(),
+              },
             },
             product_options: {
-              redirect_url: 'https://aivideonarrator.com/pricing?success=true',
-              cancel_url: 'https://aivideonarrator.com/pricing',
+              redirect_url: 'https://www.aivideonarrator.com/generator?payment=success',
+              enabled_variants: [parseInt(variantId, 10)],
             },
           },
           relationships: {
             store: {
-              data: { type: 'stores', id: storeId.toString() },
+              data: { type: 'stores', id: storeId?.toString() },
             },
             variant: {
-              data: { type: 'variants', id: variantIdNum.toString() },
+              data: { type: 'variants', id: variantId.toString() },
             },
           },
         },
@@ -61,21 +54,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await lemonRes.json();
 
     if (!lemonRes.ok) {
-      console.error('🍋 Lemon Squeezy API error:', data);
-      return res.status(lemonRes.status).json({ error: 'Failed to create checkout', details: data });
+      console.error('🍋 Lemon Squeezy API Error Details:', JSON.stringify(data, null, 2));
+      return res.status(lemonRes.status).json({ error: 'Lemon Squeezy error', details: data });
     }
 
-    // Successfully return the URL
+    // Success! Return the checkout URL
     return res.status(200).json({ url: data.data.attributes.url });
-    
+
   } catch (error: any) {
-    console.error('💥 Unexpected error:', error.message);
+    console.error('💥 Server Error:', error.message);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
-
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
