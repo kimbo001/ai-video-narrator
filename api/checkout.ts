@@ -12,7 +12,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing variantId or userId' });
   }
 
-  // ✅ Add validation: ensure variantId is a number
   const variantIdNum = parseInt(variantId, 10);
   if (isNaN(variantIdNum)) {
     return res.status(400).json({ error: 'Invalid variantId: must be a number' });
@@ -21,22 +20,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
   const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
 
-  // ✅ Return JSON error if missing
-  if (!apiKey) {
-    console.error('❌ LEMON_SQUEEZY_API_KEY is missing');
-    return res.status(500).json({ error: 'Server misconfigured: missing API key' });
-  }
-  if (!storeId) {
-    console.error('❌ LEMON_SQUEEZY_STORE_ID is missing');
-    return res.status(500).json({ error: 'Server misconfigured: missing store ID' });
+  if (!apiKey || !storeId) {
+    console.error('❌ Missing Environment Variables');
+    return res.status(500).json({ error: 'Server misconfigured' });
   }
 
   try {
-    const storeIdNum = parseInt(storeId, 10);
-    if (isNaN(storeIdNum)) {
-      return res.status(500).json({ error: 'Invalid STORE_ID: must be a number' });
-    }
-
     const lemonRes = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
       headers: {
@@ -45,18 +34,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Accept: 'application/vnd.api+json',
       },
       body: JSON.stringify({
-         {
+        data: {
           type: 'checkouts',
           attributes: {
-            store_id: storeIdNum,
-            variant_id: variantIdNum,
-            checkout_ {
+            checkout_data: {
               email: userEmail || undefined,
               custom: { user_id: userId },
             },
             product_options: {
               redirect_url: 'https://aivideonarrator.com/pricing?success=true',
               cancel_url: 'https://aivideonarrator.com/pricing',
+            },
+          },
+          relationships: {
+            store: {
+              data: { type: 'stores', id: storeId.toString() },
+            },
+            variant: {
+              data: { type: 'variants', id: variantIdNum.toString() },
             },
           },
         },
@@ -70,11 +65,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(lemonRes.status).json({ error: 'Failed to create checkout', details: data });
     }
 
-    res.status(200).json({ url: data.data.attributes.url });
+    // Successfully return the URL
+    return res.status(200).json({ url: data.data.attributes.url });
+    
   } catch (error: any) {
-    console.error('💥 Unexpected error in /api/checkout:', error.message || error);
-    // ✅ Always return JSON, never let it crash to HTML
-    res.status(500).json({ error: 'Internal server error', message: error.message || 'Unknown' });
+    console.error('💥 Unexpected error:', error.message);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
