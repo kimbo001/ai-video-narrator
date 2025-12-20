@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "rm -f index.tsx App.tsx types.ts",
     "postinstall": "prisma generate",
     "build": "prisma generate && tsc && vite build",
     "preview": "vite preview"
