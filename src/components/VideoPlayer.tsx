@@ -391,6 +391,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
+  // --- FIXED EXPORT LOGIC ---
   const handleExport = async () => {
      if (!canvasRef.current || !audioContextRef.current) return;
      stopSceneMedia();
@@ -423,11 +424,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         stream.addTrack(dest.stream.getAudioTracks()[0]);
      }
 
-     // EXPORT FORMAT LOGIC
-     // Prefer mp4 if supported, else webm
-     let mimeType = 'video/webm;codecs=vp9,opus'; // Default
+     // --- 1. DETECT SUPPORTED FORMATS ---
+     // Priority: MP4 (Safari) > WebM/H264 (Chrome/Edge/Firefox) > WebM/VP9 (Standard)
+     let mimeType = 'video/webm'; // Fallback
      if (MediaRecorder.isTypeSupported('video/mp4')) {
          mimeType = 'video/mp4';
+     } else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264')) {
+         mimeType = 'video/webm;codecs=h264';
+     } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+         mimeType = 'video/webm;codecs=vp9';
      }
 
      const recorder = new MediaRecorder(stream, { 
@@ -442,9 +447,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        // Extension determination
-        const ext = mimeType.includes('mp4') ? 'mp4' : 'mp4'; // Forcing .mp4 naming for user convenience even if webm (VLC handles it)
+        
+        // --- 2. SET CORRECT EXTENSION ---
+        // If the browser supports real MP4, use .mp4
+        // If the browser made a WebM, use .webm (fixes the playback issue)
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
         a.download = `ai-story-${Date.now()}.${ext}`;
+        
         a.click();
         URL.revokeObjectURL(url);
         
@@ -541,7 +550,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             
             <button onClick={handleExport} disabled={isExporting || scenes.length === 0} className="flex items-center gap-2 px-4 py-2 bg-zinc-100 hover:bg-white text-zinc-900 text-xs font-bold rounded-lg transition-all disabled:opacity-50 disabled:bg-zinc-800 disabled:text-zinc-600">
               {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              <span>{isExporting ? 'Exporting...' : 'Export MP4'}</span>
+              <span>{isExporting ? 'Exporting...' : 'Download Video'}</span>
             </button>
          </div>
       </div>
