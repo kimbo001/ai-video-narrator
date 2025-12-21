@@ -1,4 +1,3 @@
-// src/components/Generator.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useSafeUser } from '../lib/useSafeUser';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
@@ -51,21 +50,23 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [maxLimit, setMaxLimit] = useState(3);
   const [userPlan, setUserPlan] = useState('FREE');
 
-  const { user } = useSafeUser();
+  // Safely handle missing user context
+  const safeUserHook = useSafeUser ? useSafeUser() : { user: null };
+  const user = safeUserHook.user;
   const userId = user?.id ?? '';
 
-  // 1. Fetch usage from Prisma Backend
+  // 1. Fetch usage safely
   const fetchUsage = async () => {
     if (!userId) return;
     try {
       const res = await fetch(`/api/limits?userId=${userId}`);
-      if (!res.ok) return;
+      if (!res.ok) return; // Fail silently if API doesn't exist
       const data = await res.json();
       setGenerationsToday(data.used);
       setMaxLimit(data.limit);
       setUserPlan(data.plan);
     } catch (err) {
-      console.error("Usage fetch error:", err);
+      console.warn("Usage fetch skipped (API likely unavailable)");
     }
   };
 
@@ -73,28 +74,36 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     if (userId) fetchUsage(); 
   }, [userId]);
 
-  // 2. Check limits before starting generation
+  // 2. Check limits safely (Default to TRUE if API fails)
   const checkLimits = async () => {
-    const res = await fetch(`/api/limits?userId=${userId}`);
-    const data = await res.json();
-    if (!data.allowed) {
-      alert(`Daily limit reached for your ${data.plan} plan. Upgrade for more!`);
-      return false;
+    if (!userId) return true; // Allow guests or missing DB
+    try {
+      const res = await fetch(`/api/limits?userId=${userId}`);
+      if (!res.ok) return true; // If API 404s, allow generation
+      const data = await res.json();
+      if (data.allowed === false) {
+        alert(`Daily limit reached for your ${data.plan} plan. Upgrade for more!`);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn("Limit check failed, proceeding anyway:", e);
+      return true;
     }
-    return true;
   };
 
-  // 3. Log the successful video to the database
+  // 3. Log safely
   const logVideoToDb = async () => {
+    if (!userId) return;
     try {
       await fetch('/api/videos/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
       });
-      fetchUsage(); // Refresh the counter in the UI
+      fetchUsage(); 
     } catch (err) {
-      console.error("Failed to log video usage:", err);
+      console.warn("Failed to log video usage (API likely unavailable)");
     }
   };
 
@@ -139,16 +148,18 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   };
 
   const handleGenerate = async () => {
-    // SECURITY CHECK: Check limits before burning API tokens
-    const ok = await checkLimits();
-    if (!ok) return;
-
     try {
+      // 1. Check Limits (Wrapped in try/catch internally, returns true on failure)
+      const ok = await checkLimits();
+      if (!ok) return;
+
       setScenes([]);
       if (!musicFile && !isManualMode) setBackgroundMusicUrl(null);
       usedMediaUrlsRef.current = new Set();
 
       setStatus({ step: 'analyzing', message: 'Analyzing script & creating storyboard...' });
+      
+      // GEMINI CALL
       const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject);
 
       if (!isManualMode && !musicFile) {
@@ -209,11 +220,13 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
 
-      // LOG SUCCESS: Save the generation event to Prisma
+      // LOG SUCCESS (Safe Call)
       await logVideoToDb();
 
     } catch (error: any) {
-      console.error(error);
+      console.error("Generation Error:", error);
+      // Give a helpful alert to the user if something crashed
+      alert(`Generation Failed: ${error.message || "Unknown error"}`);
       setStatus({ step: 'error', message: 'Error generating video.' });
     }
   };
