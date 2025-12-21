@@ -1,42 +1,49 @@
-// api/limits.ts
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { prisma } from '../src/lib/prisma';
+// src/pages/api/limits.ts
+import { db } from '@/lib/prisma';
+import { getTodayGenerationCount } from '@/lib/dailyGeneration';
+import { getUserDailyLimit } from '@/lib/getUserTier';
 
-const LIMITS = { FREE: 3, NEW_TUBER: 5, CREATOR: 25, PRO: 1000 };
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { userId } = req.query;
+export default async function handler(req: Request) {
+  if (req.method !== 'GET') {
+    return new Response('Method Not Allowed', { status: 405 });
+  }
 
   try {
-    // 1. Find user or create them if they don't exist yet
-    let user = await prisma.user.findUnique({
-      where: { clerkId: String(userId) },
-      include: {
-        _count: {
-          select: {
-            videos: {
-              where: { createdAt: { gte: new Date(new Date().setHours(0,0,0,0)) } }
-            }
-          }
-        }
-      }
-    });
+    // Get userId from query param
+    const url = new URL(req.url);
+    const userId = url.searchParams.get('userId');
 
-    // If new user, create them in DB
-    if (!user) {
-        user = await prisma.user.create({
-            data: { clerkId: String(userId), email: 'pending@user.com', plan: 'FREE' },
-            include: { _count: { select: { videos: true } } }
-        });
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'Missing userId' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const plan = user.plan || "FREE";
-    const used = user._count?.videos || 0;
-    const limit = LIMITS[plan as keyof typeof LIMITS];
+    // Get limit and current count
+    const limit = await getUserDailyLimit(userId);
+    const used = await getTodayGenerationCount(userId);
 
-    // 2. Return the data to the Generator.tsx
-    res.status(200).json({ plan, used, limit, allowed: used < limit });
+    return new Response(
+      JSON.stringify({
+        limit,
+        used,
+        remaining: limit - used,
+        canGenerate: used < limit,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch limits" });
+    console.error('Limits API error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 }
