@@ -1,7 +1,6 @@
-// src/components/FlappyNarrator.tsx - FINAL VERSION: Guest play + navigation + no duplicates
+// src/components/FlappyNarrator.tsx - FINAL: No nav bar, single title, clean for PlayPage
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 
 interface FlappyNarratorProps {
   userId?: string;
@@ -317,99 +316,69 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
   }, [gameState]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#0b0e14] to-black">
-      {/* Navigation Bar - matches your site */}
-      <nav className="border-b border-zinc-800 bg-[#0b0e14]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 group">
-            <img src="/logo.png" alt="AI Video Narrator" className="w-8 h-8 object-contain transition-transform group-hover:scale-105" />
-            <span className="font-bold text-white text-lg tracking-tight">AI Video Narrator</span>
-          </Link>
+    <div className="relative flex flex-col items-center justify-center min-h-[600px] px-4">
+      <canvas
+        ref={canvasRef}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        className="rounded-2xl border-4 border-gray-900 shadow-2xl"
+        onClick={flap}
+      />
 
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-sm font-medium text-zinc-400 hover:text-white">Home</Link>
-            <Link to="/pricing" className="text-sm font-medium text-zinc-400 hover:text-white">Pricing</Link>
-            <Link to="/play" className="text-sm font-medium text-zinc-400 hover:text-white">Play</Link>
-            <Link to="/legal" className="text-sm font-medium text-zinc-400 hover:text-white">Terms & Privacy</Link>
-          </div>
+      {/* Loading */}
+      {gameState === 'menu' && !imagesLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-2xl">
+          <p className="text-4xl font-semibold text-white">Loading...</p>
+        </div>
+      )}
 
-          <div className="flex items-center gap-4">
-            <Link to="/generator" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
-              App Dashboard
-            </Link>
+      {/* Menu */}
+      {gameState === 'menu' && imagesLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl">
+          <div className="text-center text-white px-8">
+            <h1 className="mb-6 text-6xl font-bold tracking-tight drop-shadow-lg md:text-7xl">
+              Narration Flap
+            </h1>
+            <p className="mb-12 max-w-2xl text-xl leading-relaxed opacity-90 md:text-2xl">
+              Flap the flying microphone through gaps shaped by AI narration
+              <br />
+              <span className="text-lg opacity-75">Tap or press Space to flap</span>
+            </p>
+            <button
+              onClick={startGame}
+              className="rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-12 py-5 text-3xl font-bold text-white shadow-xl transition hover:from-green-600 hover:to-emerald-700 hover:scale-105"
+            >
+              PLAY
+            </button>
           </div>
         </div>
-      </nav>
+      )}
 
-      {/* Game Area */}
-      <div className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="relative">
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            className="rounded-2xl border-4 border-gray-900 shadow-2xl"
-            onClick={flap}
-          />
-
-          {/* Loading */}
-          {gameState === 'menu' && !imagesLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-2xl">
-              <p className="text-4xl font-semibold text-white">Loading...</p>
-            </div>
-          )}
-
-          {/* Menu - with title */}
-          {gameState === 'menu' && imagesLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl">
-              <div className="text-center text-white px-8">
-                <h1 className="mb-6 text-6xl font-bold tracking-tight drop-shadow-lg md:text-7xl">
-                  Narration Flap
-                </h1>
-                <p className="mb-12 max-w-2xl text-xl leading-relaxed opacity-90 md:text-2xl">
-                  Flap the flying microphone through gaps shaped by AI narration
-                  <br />
-                  <span className="text-lg opacity-75">Tap or press Space to flap</span>
-                </p>
-                <button
-                  onClick={startGame}
-                  className="rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-12 py-5 text-3xl font-bold text-white shadow-xl transition hover:from-green-600 hover:to-emerald-700 hover:scale-105"
-                >
-                  PLAY
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Game Over */}
-          {gameState === 'gameover' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl">
-              <div className="text-center text-white px-8">
-                <h2 className="mb-8 text-6xl font-bold tracking-tight drop-shadow-lg md:text-7xl">
-                  Game Over
-                </h2>
-                <p className="mb-4 text-5xl font-bold md:text-6xl">Score: {score}</p>
-                <p className="mb-12 text-3xl opacity-80">Best: {highScore}</p>
-                <button
-                  onClick={startGame}
-                  className="rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-12 py-5 text-3xl font-bold text-white shadow-xl transition hover:from-green-600 hover:to-emerald-700 hover:scale-105"
-                >
-                  Play Again
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Score */}
-          {gameState === 'playing' && (
-            <div className="absolute top-8 left-1/2 -translate-x-1/2">
-              <div className="text-6xl font-bold text-white drop-shadow-2xl tracking-wide md:text-7xl">
-                {score}
-              </div>
-            </div>
-          )}
+      {/* Game Over */}
+      {gameState === 'gameover' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl">
+          <div className="text-center text-white px-8">
+            <h2 className="mb-8 text-6xl font-bold tracking-tight drop-shadow-lg md:text-7xl">
+              Game Over
+            </h2>
+            <p className="mb-4 text-5xl font-bold md:text-6xl">Score: {score}</p>
+            <p className="mb-12 text-3xl opacity-80">Best: {highScore}</p>
+            <button
+              onClick={startGame}
+              className="rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-12 py-5 text-3xl font-bold text-white shadow-xl transition hover:from-green-600 hover:to-emerald-700 hover:scale-105"
+            >
+              Play Again
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Score */}
+      {gameState === 'playing' && (
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 text-6xl font-bold text-white drop-shadow-2xl md:text-7xl">
+          {score}
+        </div>
+      )}
     </div>
   );
 }
