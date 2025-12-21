@@ -2,14 +2,19 @@
 import { PrismaClient } from '@prisma/client';
 
 declare global {
+  // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
 }
 
-const prisma = global.prisma || new PrismaClient();
+// Reuse the same PrismaClient instance in development to avoid "too many clients" warning
+const client = global.prisma || new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prisma;
+  global.prisma = client;
 }
 
-export { prisma as db };  // ← THIS LINE IS KEY
-export default prisma;
+// Named export 'db' so `import { db } from './prisma'` works
+export { client as db };
+
+// Default export for backward compatibility (if you use `import prisma from '@/lib/prisma'`)
+export default client;
