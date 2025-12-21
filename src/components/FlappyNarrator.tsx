@@ -1,4 +1,4 @@
-// src/components/FlappyNarrator.tsx - WITH NAVIGATION BAR (matches site exactly)
+// src/components/FlappyNarrator.tsx - FINAL VERSION: Guest play + navigation + no duplicates
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -62,7 +62,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
 
-  // Preload images (same as before)
+  // Preload images
   useEffect(() => {
     const imgPaths = {
       background: '/assets/flappy/background-day.png',
@@ -89,7 +89,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
     });
   }, []);
 
-  // Preload audio (your .ogg files)
+  // Preload audio
   useEffect(() => {
     bgMusic.current = new Audio('/assets/flappy/audio/bg-music.ogg');
     bgMusic.current.loop = true;
@@ -172,7 +172,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
     }
   };
 
-  // Game loop (unchanged - all your gameplay logic)
+  // Game loop (unchanged)
   useEffect(() => {
     if (gameState !== 'playing' || !imagesLoaded) {
       if (bgMusic.current) bgMusic.current.pause();
@@ -317,8 +317,8 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
   }, [gameState]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0b0e14]">
-      {/* NAVIGATION BAR - IDENTICAL TO SITE */}
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#0b0e14] to-black">
+      {/* Navigation Bar - matches your site */}
       <nav className="border-b border-zinc-800 bg-[#0b0e14]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
@@ -334,7 +334,6 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Add your Clerk buttons here if needed */}
             <Link to="/generator" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
               App Dashboard
             </Link>
@@ -342,39 +341,39 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
         </div>
       </nav>
 
-      {/* Game content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+      {/* Game Area */}
+      <div className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="relative">
           <canvas
             ref={canvasRef}
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
-            className="rounded-2xl shadow-2xl border-4 border-gray-900"
+            className="rounded-2xl border-4 border-gray-900 shadow-2xl"
             onClick={flap}
           />
 
           {/* Loading */}
           {gameState === 'menu' && !imagesLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-2xl">
-              <p className="text-white text-4xl font-semibold">Loading...</p>
+              <p className="text-4xl font-semibold text-white">Loading...</p>
             </div>
           )}
 
-          {/* Menu */}
+          {/* Menu - with title */}
           {gameState === 'menu' && imagesLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl">
               <div className="text-center text-white px-8">
-                <h1 className="text-6xl md:text-7xl font-bold mb-6 tracking-tight drop-shadow-lg">
+                <h1 className="mb-6 text-6xl font-bold tracking-tight drop-shadow-lg md:text-7xl">
                   Narration Flap
                 </h1>
-                <p className="text-xl md:text-2xl mb-12 max-w-2xl leading-relaxed opacity-90">
+                <p className="mb-12 max-w-2xl text-xl leading-relaxed opacity-90 md:text-2xl">
                   Flap the flying microphone through gaps shaped by AI narration
                   <br />
                   <span className="text-lg opacity-75">Tap or press Space to flap</span>
                 </p>
                 <button
                   onClick={startGame}
-                  className="px-12 py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-3xl font-bold rounded-xl shadow-xl hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200"
+                  className="rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-12 py-5 text-3xl font-bold text-white shadow-xl transition hover:from-green-600 hover:to-emerald-700 hover:scale-105"
                 >
                   PLAY
                 </button>
@@ -386,14 +385,14 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
           {gameState === 'gameover' && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl">
               <div className="text-center text-white px-8">
-                <h2 className="text-6xl md:text-7xl font-bold mb-8 tracking-tight drop-shadow-lg">
+                <h2 className="mb-8 text-6xl font-bold tracking-tight drop-shadow-lg md:text-7xl">
                   Game Over
                 </h2>
-                <p className="text-5xl md:text-6xl mb-4 font-bold">Score: {score}</p>
-                <p className="text-3xl mb-12 opacity-80">Best: {highScore}</p>
+                <p className="mb-4 text-5xl font-bold md:text-6xl">Score: {score}</p>
+                <p className="mb-12 text-3xl opacity-80">Best: {highScore}</p>
                 <button
                   onClick={startGame}
-                  className="px-12 py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-3xl font-bold rounded-xl shadow-xl hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200"
+                  className="rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-12 py-5 text-3xl font-bold text-white shadow-xl transition hover:from-green-600 hover:to-emerald-700 hover:scale-105"
                 >
                   Play Again
                 </button>
@@ -404,7 +403,7 @@ export default function FlappyNarrator({ userId }: FlappyNarratorProps = {}) {
           {/* Score */}
           {gameState === 'playing' && (
             <div className="absolute top-8 left-1/2 -translate-x-1/2">
-              <div className="text-6xl md:text-7xl font-bold text-white drop-shadow-2xl tracking-wide">
+              <div className="text-6xl font-bold text-white drop-shadow-2xl tracking-wide md:text-7xl">
                 {score}
               </div>
             </div>
