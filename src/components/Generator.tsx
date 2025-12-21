@@ -50,23 +50,23 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [maxLimit, setMaxLimit] = useState(3);
   const [userPlan, setUserPlan] = useState('FREE');
 
-  // Safely handle missing user context
-  const safeUserHook = useSafeUser ? useSafeUser() : { user: null };
-  const user = safeUserHook.user;
+  // Safely handle useSafeUser possibly being undefined in some contexts
+  const safeUserHook = typeof useSafeUser === 'function' ? useSafeUser() : { user: null };
+  const user = safeUserHook?.user;
   const userId = user?.id ?? '';
 
-  // 1. Fetch usage safely
+  // 1. Fetch usage safely (Fail silent if API is down)
   const fetchUsage = async () => {
     if (!userId) return;
     try {
       const res = await fetch(`/api/limits?userId=${userId}`);
-      if (!res.ok) return; // Fail silently if API doesn't exist
+      if (!res.ok) return; // If 500 error, just stop without crashing
       const data = await res.json();
       setGenerationsToday(data.used);
       setMaxLimit(data.limit);
       setUserPlan(data.plan);
     } catch (err) {
-      console.warn("Usage fetch skipped (API likely unavailable)");
+      console.warn("Usage check failed, ignoring.");
     }
   };
 
@@ -74,12 +74,13 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
     if (userId) fetchUsage(); 
   }, [userId]);
 
-  // 2. Check limits safely (Default to TRUE if API fails)
+  // 2. Check limits safely (Default to TRUE so generation still works if DB is down)
   const checkLimits = async () => {
-    if (!userId) return true; // Allow guests or missing DB
+    if (!userId) return true; // Guests allowed
     try {
       const res = await fetch(`/api/limits?userId=${userId}`);
-      if (!res.ok) return true; // If API 404s, allow generation
+      if (!res.ok) return true; // If server error, let user proceed anyway
+      
       const data = await res.json();
       if (data.allowed === false) {
         alert(`Daily limit reached for your ${data.plan} plan. Upgrade for more!`);
@@ -87,8 +88,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       }
       return true;
     } catch (e) {
-      console.warn("Limit check failed, proceeding anyway:", e);
-      return true;
+      console.warn("Limit check crashed, allowing generation anyway:", e);
+      return true; // Fail safe -> Allow generation
     }
   };
 
@@ -103,7 +104,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       });
       fetchUsage(); 
     } catch (err) {
-      console.warn("Failed to log video usage (API likely unavailable)");
+      console.warn("Logging video failed.");
     }
   };
 
@@ -149,17 +150,15 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
   const handleGenerate = async () => {
     try {
-      // 1. Check Limits (Wrapped in try/catch internally, returns true on failure)
-      const ok = await checkLimits();
-      if (!ok) return;
+      // SECURITY CHECK (Wrapped)
+      const allowed = await checkLimits();
+      if (!allowed) return;
 
       setScenes([]);
       if (!musicFile && !isManualMode) setBackgroundMusicUrl(null);
       usedMediaUrlsRef.current = new Set();
 
       setStatus({ step: 'analyzing', message: 'Analyzing script & creating storyboard...' });
-      
-      // GEMINI CALL
       const { scenes: analyzedScenes } = await analyzeScript(script, config.visualSubject);
 
       if (!isManualMode && !musicFile) {
@@ -220,14 +219,12 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       setScenes(finalScenes as Scene[]);
       setStatus({ step: 'ready' });
 
-      // LOG SUCCESS (Safe Call)
+      // Log success safely
       await logVideoToDb();
 
     } catch (error: any) {
-      console.error("Generation Error:", error);
-      // Give a helpful alert to the user if something crashed
-      alert(`Generation Failed: ${error.message || "Unknown error"}`);
-      setStatus({ step: 'error', message: 'Error generating video.' });
+      console.error(error);
+      setStatus({ step: 'error', message: 'Error generating video. Please try again.' });
     }
   };
 
@@ -266,7 +263,6 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           Back to Home
         </button>
         
-        {/* DYNAMIC LIMIT BADGE */}
         <div className="flex gap-2">
             <div className="text-[10px] font-bold text-zinc-500 bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800">
                PLAN: <span className="text-cyan-400 uppercase">{userPlan}</span>
