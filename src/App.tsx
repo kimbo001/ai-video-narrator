@@ -1,4 +1,4 @@
-// src/App.tsx - FINAL: Free tier public, Generator protected
+// src/App.tsx - FINAL: Free tier public, only Generator protected
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
@@ -16,7 +16,9 @@ const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
 /* ----------  PROTECTED GENERATOR ONLY ---------- */
 const ProtectedGenerator = () => {
-  if (!clerkPubKey) return <Generator onBack={() => window.history.back()} />;
+  if (!clerkPubKey) {
+    return <Generator onBack={() => window.history.back()} />;
+  }
 
   return (
     <>
@@ -30,7 +32,7 @@ const ProtectedGenerator = () => {
   );
 };
 
-/* ----------  LAYOUT (navigation visible everywhere) ---------- */
+/* ----------  LAYOUT - NAVIGATION VISIBLE EVERYWHERE ---------- */
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-[#0b0e14] text-zinc-300 font-sans selection:bg-cyan-500/30 flex flex-col">
