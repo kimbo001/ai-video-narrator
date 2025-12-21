@@ -17,6 +17,7 @@
     "@prisma/adapter-pg": "7.1.0",
     "@prisma/client": "^7.1.0",
     "@vercel/analytics": "^1.6.1",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "lucide-react": "^0.469.0",
@@ -26,6 +27,7 @@
     "react-router-dom": "^6.30.2"
   },
   "devDependencies": {
+    "@types/date-fns": "^2.5.3",
     "@types/express": "^5.0.6",
     "@types/node": "^20.12.7",
     "@types/pg": "^8.16.0",

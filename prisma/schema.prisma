@@ -1,25 +1,39 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  // The 'url' line is REMOVED from here
 }
 
 model User {
-  id              String   @id @default(cuid())
-  clerkId         String   @unique
-  email           String   @unique
-  plan            String   @default("FREE")
-  lemonVariantId  String?
-  videos          Video[]
-  createdAt       DateTime @default(now())
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  subscriptions Subscription[]
+  generations   DailyGeneration[]
 }
 
-model Video {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+model Subscription {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  tier           String   @default("free") // "free" | "creator" | "pro" | "agency"
+  status         String   @default("active")
+  lemonCustomerId String? @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId])
+}
+
+model DailyGeneration {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id])
+  date   DateTime
+  count  Int      @default(0)
+
+  @@unique([userId, date])
 }
