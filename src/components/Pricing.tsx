@@ -32,10 +32,10 @@ const Pricing: React.FC = () => {
 
   // Variant IDs (keep your env vars)
   const lsVariantIds = {
-    'New Tuber': import.meta.env.VITE_LEMON_NEW_TUBER || '1160511',
-    'Creator': import.meta.env.VITE_LEMON_CREATOR || '1160512',
-    'Pro': import.meta.env.VITE_LEMON_PRO || '1160514',
-  };
+  'New Tuber': import.meta.env.VITE_LEMON_NEW_TUBER,
+  'Creator': import.meta.env.VITE_LEMON_CREATOR,
+  'Pro': import.meta.env.VITE_LEMON_PRO,
+};
 
   // Checkout URLs with pre-filled email (only for signed-in users)
   const getCheckoutUrl = (tier: 'New Tuber' | 'Creator' | 'Pro') => {
