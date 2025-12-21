@@ -1,4 +1,4 @@
-// src/App.tsx - FINAL: Free tier public, only Generator protected
+// src/App.tsx - FINAL JOURNEY: Everything public except paid checkout
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
@@ -14,16 +14,20 @@ import './index.css';
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
-/* ----------  PROTECTED GENERATOR ONLY ---------- */
-const ProtectedGenerator = () => {
+/* ----------  PROTECTED UPGRADE ROUTE (only for checkout) ---------- */
+// You can create a separate Checkout page or handle in Pricing
+// For now, we assume /checkout is where Lemon Squeezy links go
+const ProtectedCheckout = () => {
   if (!clerkPubKey) {
-    return <Generator onBack={() => window.history.back()} />;
+    // Dev mode – allow
+    return <div>Checkout page (dev mode)</div>;
   }
 
   return (
     <>
       <SignedIn>
-        <Generator onBack={() => window.history.back()} />
+        {/* Your Lemon Squeezy checkout component or redirect */}
+        <div>Checkout – proceed with payment</div>
       </SignedIn>
       <SignedOut>
         <RedirectToSignIn />
@@ -32,7 +36,7 @@ const ProtectedGenerator = () => {
   );
 };
 
-/* ----------  LAYOUT - NAVIGATION VISIBLE EVERYWHERE ---------- */
+/* ----------  LAYOUT - NAVIGATION ON ALL PAGES ---------- */
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-[#0b0e14] text-zinc-300 font-sans selection:bg-cyan-500/30 flex flex-col">
@@ -97,10 +101,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<LandingPage />} />
-    <Route path="/generator" element={<ProtectedGenerator />} /> {/* ONLY this is protected */}
+    <Route path="/generator" element={<Generator onBack={() => window.history.back()} />} /> {/* FREE TIER PUBLIC */}
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/play" element={<PlayPage />} />
     <Route path="/legal" element={<Legal page="terms" />} />
+    {/* Optional: protected checkout page */}
+    {/* <Route path="/checkout" element={<ProtectedCheckout />} /> */}
     {clerkPubKey && (
       <>
         <Route path="/sign-in/*" element={<RedirectToSignIn />} />
