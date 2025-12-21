@@ -391,7 +391,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // --- FIXED EXPORT LOGIC ---
+  // --- SMOOTH EXPORT LOGIC ---
   const handleExport = async () => {
      if (!canvasRef.current || !audioContextRef.current) return;
      stopSceneMedia();
@@ -408,7 +408,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         await audioContextRef.current.resume();
      }
 
-     const stream = canvasRef.current.captureStream(30);
+     // 1. CAPTURE AT 60 FPS (Smoother)
+     const stream = canvasRef.current.captureStream(60);
      const dest = audioContextRef.current.createMediaStreamDestination();
      
      if (bgMusicSourceRef.current && bgMusicGainRef.current) {
@@ -424,9 +425,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         stream.addTrack(dest.stream.getAudioTracks()[0]);
      }
 
-     // --- 1. DETECT SUPPORTED FORMATS ---
-     // Priority: MP4 (Safari) > WebM/H264 (Chrome/Edge/Firefox) > WebM/VP9 (Standard)
-     let mimeType = 'video/webm'; // Fallback
+     let mimeType = 'video/webm'; 
      if (MediaRecorder.isTypeSupported('video/mp4')) {
          mimeType = 'video/mp4';
      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264')) {
@@ -437,7 +436,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
      const recorder = new MediaRecorder(stream, { 
         mimeType: mimeType,
-        videoBitsPerSecond: 8000000 
+        // 2. INCREASE BITRATE TO 20Mbps (Removes blocky artifacts)
+        videoBitsPerSecond: 20000000 
      });
      
      const chunks: Blob[] = [];
@@ -448,9 +448,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const a = document.createElement('a');
         a.href = url;
         
-        // --- 2. SET CORRECT EXTENSION ---
-        // If the browser supports real MP4, use .mp4
-        // If the browser made a WebM, use .webm (fixes the playback issue)
         const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
         a.download = `ai-story-${Date.now()}.${ext}`;
         
