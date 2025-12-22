@@ -1,4 +1,3 @@
-// src/lib/dailyGeneration.ts
 import { db } from './prisma';
 
 export async function getTodayGenerationCount(userId: string): Promise<number> {
@@ -9,7 +8,7 @@ export async function getTodayGenerationCount(userId: string): Promise<number> {
     where: {
       userId: userId,
       createdAt: {
-        gte: startOfDay, // Greater than or equal to 00:00 today
+        gte: startOfDay,
       },
     },
   });

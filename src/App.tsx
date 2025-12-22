@@ -3,7 +3,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
-import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
+// ADDED: SignInButton, UserButton
+import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn, SignInButton, UserButton } from '@clerk/clerk-react';
 
 import LandingPage from './components/LandingPage';
 import Generator from './components/Generator';
@@ -15,18 +16,14 @@ import './index.css';
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
 /* ----------  PROTECTED UPGRADE ROUTE (only for checkout) ---------- */
-// You can create a separate Checkout page or handle in Pricing
-// For now, we assume /checkout is where Lemon Squeezy links go
 const ProtectedCheckout = () => {
   if (!clerkPubKey) {
-    // Dev mode – allow
     return <div>Checkout page (dev mode)</div>;
   }
 
   return (
     <>
       <SignedIn>
-        {/* Your Lemon Squeezy checkout component or redirect */}
         <div>Checkout – proceed with payment</div>
       </SignedIn>
       <SignedOut>
@@ -58,14 +55,21 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {clerkPubKey ? (
               <>
                 <SignedOut>
-                  <Link to="/sign-in" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
-                    Sign In
-                  </Link>
+                  {/* ADDED: SignInButton wrapper */}
+                  <SignInButton mode="modal">
+                    <button className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
+                      Sign In
+                    </button>
+                  </SignInButton>
                 </SignedOut>
                 <SignedIn>
-                  <Link to="/generator" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
-                    App Dashboard
-                  </Link>
+                  <div className="flex items-center gap-4">
+                    <Link to="/generator" className="px-4 py-2 bg-white text-black text-sm font-bold rounded-lg hover:bg-zinc-200 transition-colors">
+                      App Dashboard
+                    </Link>
+                    {/* ADDED: UserButton (Avatar & Sign Out) */}
+                    <UserButton afterSignOutUrl="/" />
+                  </div>
                 </SignedIn>
               </>
             ) : (
@@ -101,12 +105,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<LandingPage />} />
-    <Route path="/generator" element={<Generator onBack={() => window.history.back()} />} /> {/* FREE TIER PUBLIC */}
+    <Route path="/generator" element={<Generator onBack={() => window.history.back()} />} />
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/play" element={<PlayPage />} />
     <Route path="/legal" element={<Legal page="terms" />} />
-    {/* Optional: protected checkout page */}
-    {/* <Route path="/checkout" element={<ProtectedCheckout />} /> */}
     {clerkPubKey && (
       <>
         <Route path="/sign-in/*" element={<RedirectToSignIn />} />

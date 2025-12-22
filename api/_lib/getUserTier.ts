@@ -1,12 +1,10 @@
-// src/lib/getUserTier.ts
 import { db } from './prisma';
 
-// Daily Limits Configuration
-const LIMITS = {
-  FREE: 3,        // 3 videos per day
-  NEW_TUBER: 10,  // 10 videos per day
-  CREATOR: 50,    // 50 videos per day
-  PRO: 1000       // Effectively unlimited
+const LIMITS: Record<string, number> = {
+  FREE: 3,
+  NEW_TUBER: 10,
+  CREATOR: 50,
+  PRO: 1000
 };
 
 export async function getUserDailyLimit(userId: string): Promise<number> {
@@ -15,9 +13,8 @@ export async function getUserDailyLimit(userId: string): Promise<number> {
     select: { plan: true },
   });
 
-  // Default to FREE if user not found in DB yet
   const plan = user?.plan || 'FREE';
-  return LIMITS[plan];
+  return LIMITS[plan] || 3;
 }
 
 export async function getUserPlan(userId: string): Promise<string> {

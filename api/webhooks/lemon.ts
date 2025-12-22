@@ -1,74 +1,73 @@
 // api/webhooks/lemon.ts
-import { db } from '@/lib/prisma';
-import { Tier } from '@/lib/tiers';
+import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 
-const VARIANT_TO_TIER: Record<string, Tier> = {
-  '1160511': 'new_tuber',   // New Tuber - 10/day
-  '1160512': 'creator',     // Creator - 25/day
-  '1160514': 'pro',         // Pro - 50/day
-};
+// 1. Initialize Prisma
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const db = globalForPrisma.prisma || new PrismaClient();
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 
-export default async function handler(req: Request) {
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+export default async function handler(req: any, res: any) {
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   try {
-    const body = await req.json();
-    const eventName = body.meta?.event_name;
-    const clerkUserId = body.meta?.custom_data?.user_id;
-    const variantId = body.data?.attributes?.variant_id?.toString();
-    const customerId = body.data?.attributes?.customer_id;
+    const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
+    if (!secret) return res.status(500).send("Server Error: Missing Secret");
 
-    if (!clerkUserId) {
-      console.error('No clerkUserId in webhook');
-      return new Response('Missing user_id', { status: 400 });
+    // 2. Validate Signature
+    const hmac = crypto.createHmac('sha256', secret);
+    const digest = Buffer.from(hmac.update(JSON.stringify(req.body)).digest('hex'), 'utf8');
+    const signature = Buffer.from(req.headers['x-signature'] || '', 'utf8');
+
+    if (!crypto.timingSafeEqual(digest, signature)) {
+      return res.status(401).send('Invalid signature');
     }
 
-    const tier = VARIANT_TO_TIER[variantId] || 'free';
+    // 3. Process Event
+    const event = req.body;
+    const { variant_id, user_email, customer_id } = event.data.attributes;
+    const userId = event.meta.custom_data?.userId;
+    const eventName = event.meta.event_name;
 
-    // Handle successful purchase or subscription
-    if (
-      eventName === 'order_created' ||
-      eventName === 'subscription_created' ||
-      eventName === 'subscription_updated'
-    ) {
-      await db.subscription.upsert({
-        where: { userId: clerkUserId },
-        update: {
-          tier,
-          status: 'active',
-          lemonCustomerId: customerId,
-        },
-        create: {
-          userId: clerkUserId,
-          tier,
-          status: 'active',
-          lemonCustomerId: customerId,
-        },
-      });
+    console.log(`Processing ${eventName} for ${user_email} (ID: ${userId})`);
+
+    const PLANS_MAP: Record<string, 'NEW_TUBER' | 'CREATOR' | 'PRO'> = {
+      '1160511': 'NEW_TUBER',
+      '1160512': 'CREATOR',
+      '1160514': 'PRO'
+    };
+
+    if (eventName === 'order_created' || eventName === 'subscription_created' || eventName === 'subscription_updated') {
+      const plan = PLANS_MAP[String(variant_id)];
+      
+      if (plan) {
+        if (userId) {
+          await db.user.upsert({
+            where: { id: userId },
+            create: {
+              id: userId,
+              email: user_email,
+              plan: plan,
+              subscriptionId: String(customer_id)
+            },
+            update: {
+              plan: plan,
+              subscriptionId: String(customer_id)
+            }
+          });
+          console.log(`User ${userId} upgraded to ${plan}`);
+        } else {
+          await db.user.update({
+              where: { email: user_email },
+              data: { plan: plan, subscriptionId: String(customer_id) }
+          }).catch(err => console.error("Fallback email update failed", err));
+        }
+      }
     }
 
-    // Handle cancellation or expiry → downgrade to free
-    if (
-      eventName === 'subscription_cancelled' ||
-      eventName === 'subscription_expired'
-    ) {
-      await db.subscription.updateMany({
-        where: { userId: clerkUserId },
-        data: { tier: 'free', status: 'cancelled' },
-      });
-    }
-
-    return new Response('Webhook processed', { status: 200 });
-  } catch (error) {
-    console.error('Webhook error:', error);
-    return new Response('Internal Server Error', { status: 500 });
+    return res.status(200).send('Webhook processed');
+  } catch (err: any) {
+    console.error("Webhook Error:", err);
+    return res.status(500).send('Webhook Error');
   }
 }
-
-export const config = {
-  api: {
-    bodyParser: false, // Important for webhooks — raw body needed for signature verification (if you add it later)
-  },
-};

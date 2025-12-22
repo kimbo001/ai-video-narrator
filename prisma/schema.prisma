@@ -6,34 +6,30 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // ADD THIS LINE BACK:
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String?   @unique
-  subscriptions Subscription[]
-  generations   DailyGeneration[]
-}
-
-model Subscription {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id])
-  tier           String   @default("free") // "free" | "creator" | "pro" | "agency"
-  status         String   @default("active")
-  lemonCustomerId String? @unique
+  id             String   @id
+  email          String   @unique
+  plan           Plan     @default(FREE)
+  subscriptionId String?
+  generations    Generation[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-
-  @@unique([userId])
 }
 
-model DailyGeneration {
-  id     String   @id @default(cuid())
-  userId String
-  user   User     @relation(fields: [userId], references: [id])
-  date   DateTime
-  count  Int      @default(0)
+model Generation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
 
-  @@unique([userId, date])
+enum Plan {
+  FREE
+  NEW_TUBER
+  CREATOR
+  PRO
 }
