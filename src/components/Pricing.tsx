@@ -1,12 +1,9 @@
-// src/components/Pricing.tsx - FULL & FIXED: Sign-in required for paid upgrades
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSafeUser } from '../lib/useSafeUser';
-import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react';
-import { Check, ArrowLeft, Star, Play } from 'lucide-react';
+import { Check, ArrowLeft, Star, Users, Play } from 'lucide-react';
 
-// Lemon Squeezy overlay declaration
+// 1. TypeScript declaration for the Lemon Squeezy overlay
 declare global {
   interface Window {
     createLemonSqueezy: () => void;
@@ -21,143 +18,157 @@ declare global {
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSafeUser();
-  const userEmail = user?.primaryEmailAddress?.emailAddress || '';
+  const userId = user?.id ?? 'anon_' + Math.random().toString(36).substr(2, 9);
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? '';
 
-  // Initialize Lemon Squeezy
+  // 2. Initialize Lemon Squeezy when the component mounts
   useEffect(() => {
     if (window.createLemonSqueezy) {
       window.createLemonSqueezy();
     }
   }, []);
 
-  // Your real variant IDs
+  // 3. The confirmed Variant IDs
   const lsVariantIds = {
     'New Tuber': import.meta.env.VITE_LEMON_NEW_TUBER || '1160511',
     'Creator': import.meta.env.VITE_LEMON_CREATOR || '1160512',
     'Pro': import.meta.env.VITE_LEMON_PRO || '1160514',
   };
 
-  // Generate checkout URL with pre-filled email (for signed-in users)
-  const getCheckoutUrl = (tier: 'New Tuber' | 'Creator' | 'Pro') => {
-    const base = `https://yourstore.lemonsqueezy.com/checkout/buy/${lsVariantIds[tier]}`;
-    return userEmail ? `${base}?checkout[email]=${encodeURIComponent(userEmail)}` : base;
+  // 4. The checkout logic that triggers the popup
+  const startLemonCheckout = async (tierName: 'New Tuber' | 'Creator' | 'Pro') => {
+    const variantId = lsVariantIds[tierName];
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId, userId, userEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        if (window.LemonSqueezy) {
+          window.LemonSqueezy.Url.Open(data.url);
+        } else {
+          window.location.href = data.url;
+        }
+      } else {
+        alert('Checkout failed to load. Please try again.');
+        console.error('API Error:', data);
+      }
+    } catch (error) {
+      console.error('Network Error:', error);
+    }
   };
 
   const tiers = [
     {
       name: 'Free',
       price: '$0',
-      period: 'forever',
-      description: 'Perfect for trying it out',
-      features: [
-        '5 videos per day',
-        'All voices & styles',
-        'Watermark-free',
-        'Commercial use',
-      ],
+      period: '/month',
+      description: 'Perfect for getting started',
+      autoDaily: 3,
+      manualDaily: 0.5,
+      features: ['3 AI-generated videos daily', '1 manual video every 48 hours', '720p export quality', 'Standard AI voices', 'Basic stock footage'],
       cta: 'Start Creating Free',
+      popular: false,
       isFree: true,
-      highlighted: false,
     },
     {
       name: 'New Tuber',
       price: '$10',
       period: '/month',
-      description: 'Great for new creators',
-      features: [
-        '10 videos per day',
-        'Everything in Free',
-        'Priority support',
-      ],
-      cta: 'Upgrade to New Tuber',
+      description: 'For serious creators',
+      autoDaily: 5,
+      manualDaily: 5,
+      features: ['5 AI-generated videos daily', '5 manual videos daily', '1080p export quality', 'Premium AI voices', 'Commercial usage rights', 'Priority processing'],
+      cta: 'Start New Tuber',
+      popular: true,
       isFree: false,
-      highlighted: false,
-      tierKey: 'New Tuber' as const,
     },
     {
       name: 'Creator',
       price: '$25',
       period: '/month',
-      description: 'Most popular',
-      features: [
-        '25 videos per day',
-        'Everything in New Tuber',
-        'Faster generation',
-      ],
-      cta: 'Upgrade to Creator',
+      description: 'For growing channels',
+      autoDaily: 25,
+      manualDaily: 25,
+      features: ['25 AI-generated videos daily', '25 manual videos daily', '4K export quality', 'All AI voices + custom', 'Advanced editing tools', 'Analytics dashboard'],
+      cta: 'Start Creator',
+      popular: false,
       isFree: false,
-      highlighted: true,
-      tierKey: 'Creator' as const,
     },
     {
       name: 'Pro',
       price: '$50',
       period: '/month',
-      description: 'For power users',
-      features: [
-        '50 videos per day',
-        'Everything in Creator',
-        'Early access to new features',
-      ],
-      cta: 'Upgrade to Pro',
+      description: 'For professionals',
+      autoDaily: 'Unlimited',
+      manualDaily: 'Unlimited',
+      features: ['Unlimited AI-generated videos', 'Unlimited manual videos', '4K+ export quality', 'API access', 'White-label options', 'Dedicated support'],
+      cta: 'Start Pro',
+      popular: false,
       isFree: false,
-      highlighted: false,
-      tierKey: 'Pro' as const,
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0b0e14] to-black text-white py-20">
-      {/* Back button */}
-      <div className="max-w-7xl mx-auto px-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-8 flex items-center gap-2 text-zinc-400 hover:text-white transition"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
-      </div>
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      {/* Back Button */}
+      <button 
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
 
       {/* Header */}
-      <div className="text-center mb-16">
-        <h1 className="text-5xl md:text-6xl font-bold mb-6">
-          Simple, Transparent Pricing
+      <div className="text-center mb-12">
+        <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+          Create Videos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">That Actually Get Views</span>
         </h1>
-        <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-          Choose the plan that fits your content creation needs. Upgrade anytime.
+        <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          From text to viral content in seconds. No face required.
         </p>
       </div>
 
-      {/* Pricing Cards */}
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      {/* Pricing Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {tiers.map((tier) => (
-          <div
+          <div 
             key={tier.name}
-            className={`relative rounded-2xl border-2 p-8 transition-all ${
-              tier.highlighted
-                ? 'border-cyan-500 shadow-2xl shadow-cyan-500/20 scale-105'
-                : 'border-zinc-800 hover:border-zinc-700'
-            }`}
+            className={`bg-[#11141b] border ${tier.popular ? 'border-yellow-500/50' : 'border-zinc-800'} rounded-2xl p-6 flex flex-col relative`}
           >
-            {tier.highlighted && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-1 rounded-full text-sm font-bold">
-                  Most Popular
-                </span>
+            {tier.popular && (
+              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-bl-lg">
+                POPULAR
               </div>
             )}
-
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2">{tier.name}</h2>
-              <div className="mb-4">
-                <span className="text-5xl font-bold">{tier.price}</span>
-                <span className="text-zinc-400">{tier.period}</span>
-              </div>
-              <p className="text-zinc-400">{tier.description}</p>
+            
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-white">{tier.name}</h3>
+              <p className="text-zinc-400 text-sm mt-1">{tier.description}</p>
+            </div>
+            
+            <div className="mb-6">
+              <span className="text-3xl font-bold text-white">{tier.price}</span>
+              <span className="text-zinc-500 text-sm"> {tier.period}</span>
             </div>
 
-            <ul className="space-y-4 mb-10">
+            <div className="mb-6 bg-zinc-900/50 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-zinc-400 text-sm">AI Videos</span>
+                <span className="text-white font-bold">{tier.autoDaily}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-400 text-sm">Manual Videos</span>
+                <span className="text-white font-bold">{tier.manualDaily}</span>
+              </div>
+            </div>
+
+            <ul className="flex-1 space-y-3 mb-6">
               {tier.features.map((feature, idx) => (
                 <li key={idx} className="flex items-center gap-2 text-zinc-300 text-sm">
                   <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -166,54 +177,27 @@ const Pricing: React.FC = () => {
               ))}
             </ul>
 
-            {/* CTA Button – Sign-in required for paid tiers */}
-            {tier.isFree ? (
-              <button
-                onClick={() => navigate('/generator')}
-                className="w-full py-3 bg-zinc-700 text-white font-semibold rounded-xl hover:bg-zinc-600 transition"
-              >
-                {tier.cta}
-              </button>
-            ) : (
-              <>
-                <SignedIn>
-                  <a
-                    href={getCheckoutUrl(tier.tierKey!)}
-                    className={`w-full block text-center py-3 rounded-xl font-semibold transition-all ${
-                      tier.highlighted
-                        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white'
-                        : 'bg-white text-black hover:bg-zinc-200'
-                    }`}
-                  >
-                    {tier.cta}
-                  </a>
-                </SignedIn>
-                <SignedOut>
-                  <SignInButton mode="modal">
-                    <button
-                      className={`w-full py-3 rounded-xl font-semibold transition-all ${
-                        tier.highlighted
-                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white'
-                          : 'bg-white text-black hover:bg-zinc-200'
-                      }`}
-                    >
-                      Sign In to {tier.cta}
-                    </button>
-                  </SignInButton>
-                </SignedOut>
-              </>
-            )}
+            <button
+              onClick={() => tier.isFree ? navigate('/generator') : startLemonCheckout(tier.name as any)}
+              className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                tier.isFree 
+                ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white'
+              }`}
+            >
+              {tier.cta}
+            </button>
           </div>
         ))}
       </div>
 
       {/* FAQ Section */}
-      <div className="max-w-4xl mx-auto mt-16 px-6">
+      <div className="max-w-4xl mx-auto mt-16">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h2>
         <div className="space-y-4">
           <div className="bg-zinc-800/50 p-6 rounded-xl border border-zinc-800">
             <h3 className="text-white font-semibold mb-2">How does the daily limit work?</h3>
-            <p className="text-zinc-400">Limits reset every 24 hours. Paid plans get higher generations.</p>
+            <p className="text-zinc-400">Limits reset every 24 hours. Paid plans get higher or unlimited generations.</p>
           </div>
           <div className="bg-zinc-800/50 p-6 rounded-xl border border-zinc-800">
             <h3 className="text-white font-semibold mb-2">Can I cancel anytime?</h3>
@@ -223,8 +207,8 @@ const Pricing: React.FC = () => {
       </div>
 
       {/* Footer CTA */}
-      <div className="text-center mt-16 pb-20">
-        <button
+      <div className="text-center mt-16">
+        <button 
           onClick={() => navigate('/generator')}
           className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-lg rounded-xl shadow-xl shadow-cyan-500/40 transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
         >
