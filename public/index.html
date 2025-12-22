@@ -5,10 +5,21 @@
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Video Narrator</title>
-    
-    <!-- Add this line here -->
+
+    <!-- Lemon Squeezy -->
     <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
-    
+
+    <!-- Clerk Custom Domain Setup (REQUIRED for clerk.aivideonarrator.com) -->
+    <script>
+      window.Clerk = window.Clerk || {};
+      window.Clerk.domain = 'clerk.aivideonarrator.com';
+    </script>
+    <script
+      async
+      crossorigin="anonymous"
+      src="https://cdn.clerk.com/clerk.js"
+      data-clerk-publishable-key="pk_live_Y2xlcmsuYWl2aWRlb25hcnJhdG9yLmNvbSQ"
+    ></script>
   </head>
   <body>
     <div id="root"></div>
