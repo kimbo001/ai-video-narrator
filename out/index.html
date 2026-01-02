@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary SEO -->
+  <title>AI Video Narrator | #1 AITA & Reddit Story Video Maker</title>
+  <meta name="description" content="Turn any story into viral TikToks and YouTube Shorts in 60 seconds. Featuring emotional AI voices, satisfying Minecraft gameplay, and viral captions." />
+  
+  <!-- 1. LEMON SQUEEZY SCRIPT (ADD THIS LINE) -->
+  <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="AI Video Narrator: The Viral Short Factory" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://aivideonarrator.com" />
+  <meta property="og:image" content="https://aivideonarrator.com/og-image.jpg" />
+
+  <!-- Schema.org -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "AI Video Narrator",
+    "url": "https://aivideonarrator.com"
+  }
+  </script>
+
+  <script type="module" src="/src/main.tsx"></script>
+</head>
+  <body class="bg-[#0b0e14]">
+    <div id="root"></div>
+
+    <!-- 2. LEMON SQUEEZY INITIALIZATION (ADD THIS BLOCK) -->
+    <script type="text/javascript">
+      window.createLemonSqueezy = function() {
+        if (window.LemonSqueezy) {
+          window.LemonSqueezy.Setup({
+            eventHandler: (event) => {
+              if (event.event === 'Checkout.Success') {
+                console.log('Payment successful!');
+                // You can add logic here to redirect or refresh the page
+                window.location.href = '/generator?payment=success';
+              }
+            }
+          });
+        }
+      };
+    </script>
+  </body>
+</html>

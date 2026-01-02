@@ -1,0 +1,302 @@
+🔑 Got authentication token
+
+🔍 Fetching latest deployment...
+✅ Found latest deployment
+
+📦 Deployment ID:  dpl_2sybepxCXzLhTtpjoukswhKaTqXu
+🌐 Deployment URL: ai-video-narrator-ec676gw6l-kimbos-projects-cabc600c.vercel.app
+📁 Project:        ai-video-narrator
+
+📋 Fetching file tree from API...
+
+✅ Got file tree
+
+⬇️  Downloading files...
+   (Use --verbose to see detailed progress)
+
+📁 Output directory: /home/kimbo/Desktop/AI Video Narrator/out
+
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/.github/workflows/tick.yml
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/_lib/dailyGeneration.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/_lib/getUserTier.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/_lib/prisma.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/_lib/redis.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/_lib/statsService.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/stats/bump.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/stats/index.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/user/sync.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/videos/create.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/webhooks/lemon.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/analyze.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/checkout.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/limits.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/narrate.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/tick.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/api/verify.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/assets/index-BYhtzN20.css
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/assets/index-DGm67QFv.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/demo.mp4
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/favicon.ico
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/googlefadfd84739864ce6.html
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/index.html
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/logo.png
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/og-image.jpg
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/robots.txt
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/dist/sitemap.xml
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/prisma/migrations/20250619130000_add_flappy_score/migration.sql
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/prisma/migrations/20251221094827_add_subscription_and_daily_limits/migration.sql
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/prisma/migrations/migration_lock.toml
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/prisma/prisma.config.ts 
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/prisma/schema.prisma
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/demo.mp4
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/favicon.ico
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/googlefadfd84739864ce6.html
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/index.html
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/logo.png
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/og-image.jpg
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/robots.txt
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/public/sitemap.xml
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/server/api/webhook/lemon
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/server/api/checkout.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/server/routes/index.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/server/routes/index.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/server/index.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/AitaPage.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/ErrorBoundary.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/FlappyNarrator.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/Generator.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/LandingPage.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/Legal.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/Pricing.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/SettingsPanel.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/VideoCounter.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/components/VideoPlayer.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/runtime/client.d.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/runtime/client.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/runtime/index-browser.d.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/runtime/index-browser.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/runtime/wasm-compiler-edge.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/client.d.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/client.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/default.d.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/default.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/edge.d.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/edge.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/index-browser.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/index.d.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/index.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/package.json
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/query_compiler_bg.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/query_compiler_bg.wasm
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/query_compiler_bg.wasm-base64.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/schema.prisma
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/wasm-edge-light-loader.mjs
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/generated/prisma/wasm-worker-loader.mjs
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/lib/dailyGeneration.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/lib/getUserTier.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/lib/prisma.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/lib/tiers.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/lib/useSafeUser.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/pages/api/limits.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/pages/blog/PostA.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/pages/blog/PostB.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/pages/blog/PostC.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/pages/blog/PostD.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/pages/blog/index.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/pages/Play.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/services/gemini.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/services/pexels.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/services/pixabay.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/services/unsplash.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/utils/audio.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/utils/videoExport.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/App.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/index.css
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/index.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/main.tsx
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/types.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/src/vite-env.d.ts
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/.env
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/index.html
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/package-lock.json
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/package.json
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/postcss.config.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/tailwind.config.js
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/tsconfig.json
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/vercel.json
+✅ Downloaded: /home/kimbo/Desktop/AI Video Narrator/out/vite.config.ts
+
+🎉 All files processed successfully!
+
+📊 Running comparison...
+
+📁 Total files: 109
+   ✅ Downloaded: 109
+   ⏭️  Skipped: 0
+💾 Total size: 39.55 MB
+
+📈 File types breakdown:
+   ts                37 files
+   tsx               19 files
+   js                17 files
+   html               5 files
+   json               5 files
+   css                2 files
+   mp4                2 files
+   ico                2 files
+   png                2 files
+   jpg                2 files
+
+🔍 Verifying important files:
+   ✅ package.json                                  1.3 KB
+   ❌ next.config.ts - NOT FOUND
+   ✅ tsconfig.json                                 0.6 KB
+   ❌ src/middleware.ts - NOT FOUND
+   ❌ src/app/layout.tsx - NOT FOUND
+   ❌ src/services/prisma/schema.prisma - NOT FOUND
+
+🌳 File structure tree:
+
+├── 📁 .github
+│   └── 📁 workflows
+│       └── 📄 tick.yml
+├── 📁 api
+│   ├── 📁 _lib
+│   │   ├── 📄 dailyGeneration.ts
+│   │   ├── 📄 getUserTier.ts
+│   │   ├── 📄 prisma.ts
+│   │   ├── 📄 redis.js
+│   │   └── 📄 statsService.ts
+│   ├── 📁 stats
+│   │   ├── 📄 bump.ts
+│   │   └── 📄 index.ts
+│   ├── 📁 user
+│   │   └── 📄 sync.ts
+│   ├── 📁 videos
+│   │   └── 📄 create.ts
+│   ├── 📁 webhooks
+│   │   └── 📄 lemon.ts
+│   ├── 📄 analyze.ts
+│   ├── 📄 checkout.ts
+│   ├── 📄 limits.ts
+│   ├── 📄 narrate.ts
+│   ├── 📄 tick.ts
+│   └── 📄 verify.ts
+├── 📁 dist
+│   ├── 📁 assets
+│   │   ├── 📄 index-BYhtzN20.css
+│   │   └── 📄 index-DGm67QFv.js
+│   ├── 📄 demo.mp4
+│   ├── 📄 favicon.ico
+│   ├── 📄 googlefadfd84739864ce6.html
+│   ├── 📄 index.html
+│   ├── 📄 logo.png
+│   ├── 📄 og-image.jpg
+│   ├── 📄 robots.txt
+│   └── 📄 sitemap.xml
+├── 📁 prisma
+│   ├── 📁 migrations
+│   │   ├── 📁 20250619130000_add_flappy_score
+│   │   │   └── 📄 migration.sql
+│   │   ├── 📁 20251221094827_add_subscription_and_daily_limits
+│   │   │   └── 📄 migration.sql
+│   │   └── 📄 migration_lock.toml
+│   ├── 📄 prisma.config.ts 
+│   └── 📄 schema.prisma
+├── 📁 public
+│   ├── 📄 demo.mp4
+│   ├── 📄 favicon.ico
+│   ├── 📄 googlefadfd84739864ce6.html
+│   ├── 📄 index.html
+│   ├── 📄 logo.png
+│   ├── 📄 og-image.jpg
+│   ├── 📄 robots.txt
+│   └── 📄 sitemap.xml
+├── 📁 server
+│   ├── 📁 api
+│   │   ├── 📁 webhook
+│   │   │   └── 📄 lemon
+│   │   └── 📄 checkout.js
+│   ├── 📁 routes
+│   │   ├── 📄 index.js
+│   │   └── 📄 index.ts
+│   └── 📄 index.js
+├── 📁 src
+│   ├── 📁 components
+│   │   ├── 📄 AitaPage.tsx
+│   │   ├── 📄 ErrorBoundary.tsx
+│   │   ├── 📄 FlappyNarrator.tsx
+│   │   ├── 📄 Generator.tsx
+│   │   ├── 📄 LandingPage.tsx
+│   │   ├── 📄 Legal.tsx
+│   │   ├── 📄 Pricing.tsx
+│   │   ├── 📄 SettingsPanel.tsx
+│   │   ├── 📄 VideoCounter.tsx
+│   │   └── 📄 VideoPlayer.tsx
+│   ├── 📁 generated
+│   │   └── 📁 prisma
+│   │       ├── 📁 runtime
+│   │       │   ├── 📄 client.d.ts
+│   │       │   ├── 📄 client.js
+│   │       │   ├── 📄 index-browser.d.ts
+│   │       │   ├── 📄 index-browser.js
+│   │       │   └── 📄 wasm-compiler-edge.js
+│   │       ├── 📄 client.d.ts
+│   │       ├── 📄 client.js
+│   │       ├── 📄 default.d.ts
+│   │       ├── 📄 default.js
+│   │       ├── 📄 edge.d.ts
+│   │       ├── 📄 edge.js
+│   │       ├── 📄 index-browser.js
+│   │       ├── 📄 index.d.ts
+│   │       ├── 📄 index.js
+│   │       ├── 📄 package.json
+│   │       ├── 📄 query_compiler_bg.js
+│   │       ├── 📄 query_compiler_bg.wasm
+│   │       ├── 📄 query_compiler_bg.wasm-base64.js
+│   │       ├── 📄 schema.prisma
+│   │       ├── 📄 wasm-edge-light-loader.mjs
+│   │       └── 📄 wasm-worker-loader.mjs
+│   ├── 📁 lib
+│   │   ├── 📄 dailyGeneration.ts
+│   │   ├── 📄 getUserTier.ts
+│   │   ├── 📄 prisma.ts
+│   │   ├── 📄 tiers.ts
+│   │   └── 📄 useSafeUser.ts
+│   ├── 📁 pages
+│   │   ├── 📁 api
+│   │   │   └── 📄 limits.ts
+│   │   ├── 📁 blog
+│   │   │   ├── 📄 index.tsx
+│   │   │   ├── 📄 PostA.tsx
+│   │   │   ├── 📄 PostB.tsx
+│   │   │   ├── 📄 PostC.tsx
+│   │   │   └── 📄 PostD.tsx
+│   │   └── 📄 Play.tsx
+│   ├── 📁 services
+│   │   ├── 📄 gemini.ts
+│   │   ├── 📄 pexels.ts
+│   │   ├── 📄 pixabay.ts
+│   │   └── 📄 unsplash.ts
+│   ├── 📁 utils
+│   │   ├── 📄 audio.ts
+│   │   └── 📄 videoExport.ts
+│   ├── 📄 App.tsx
+│   ├── 📄 index.css
+│   ├── 📄 index.tsx
+│   ├── 📄 main.tsx
+│   ├── 📄 types.ts
+│   └── 📄 vite-env.d.ts
+├── 📄 .env
+├── 📄 index.html
+├── 📄 package-lock.json
+├── 📄 package.json
+├── 📄 postcss.config.js
+├── 📄 tailwind.config.js
+├── 📄 tsconfig.json
+├── 📄 vercel.json
+└── 📄 vite.config.ts
+
+✨ Download and verification complete!
+📄 Full log saved to: /home/kimbo/Desktop/AI Video Narrator/download-log.txt
+

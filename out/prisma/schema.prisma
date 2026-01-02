@@ -1,0 +1,40 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String       @id // This matches the Clerk User ID
+  email          String       @unique
+  plan           Plan         @default(FREE)
+  subscriptionId String?      // Lemon Squeezy Subscription ID
+  generations    Generation[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Generation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum Plan {
+  FREE
+  NEW_TUBER
+  CREATOR
+  PRO
+}
+
+model GlobalStats {
+  id          String   @id @default("singleton")
+  totalVideos Int      @default(0)
+  lastBumpAt  DateTime @default(now())
+}

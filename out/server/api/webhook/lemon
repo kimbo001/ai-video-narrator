@@ -1,0 +1,35 @@
+import express from 'express';
+import crypto from 'crypto';
+
+const router = express.Router();
+
+// Important: raw body for signature verification
+router.post('/lemon', express.raw({ type: 'application/json' }), async (req, res) => {
+  const signature = req.headers['x-signature'];
+  if (!signature) return res.status(401).send('No signature');
+
+  const hmac = crypto.createHmac('sha256', process.env.LEMON_SQUEEZY_SIGNING_SECRET);
+  const digest = hmac.update(req.body).digest('hex');
+
+  if (digest !== signature) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  const event = JSON.parse(req.body.toString());
+
+  if (event.meta.event_name === 'subscription_created') {
+    const userId = event.meta.custom_data.user_id;
+    const variantId = event.data.attributes.variant_id; // Map this to your tier
+
+    // TODO: Update your DB
+    // e.g., await db.user.update({ where: { id: userId }, data: { tier: 'Pro', subscriptionId: event.data.id } });
+
+    console.log(`Upgraded user ${userId} to paid tier via variant ${variantId}`);
+  }
+
+  // Handle other events: subscription_updated, subscription_cancelled, etc.
+
+  res.status(200).send('OK');
+});
+
+export default router;
