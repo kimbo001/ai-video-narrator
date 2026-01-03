@@ -1,67 +1,116 @@
 // api/narrate.ts
-import { createHash } from 'crypto'
-import { getCachedNarration, setCachedNarration } from './_lib/redis.js'
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { createHash } from 'crypto';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+// @ts-ignore
+import redis from './_lib/redis.js'; 
+import { getCachedNarration, setCachedNarration } from './_lib/redis.js';
 
-// Split keys and clean them
-const keys = (process.env.GEMINI_KEY_A || '').split(',').map(k => k.trim()).filter(Boolean);
+const VOICE_MAP: Record<string, string> = {
+  'Kore': 'Kore',
+  'Aoede': 'Aoede',
+  'Zephyr': 'Zephyr',
+  'Puck': 'Puck',
+  'Charon': 'Charon',
+  'Fenrir': 'Fenrir',
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).end()
-
-  const { text, voiceName = 'Kore', sceneIndex = 0, attempt = 0 } = req.body;
-  if (!text) return res.status(400).json({ error: 'Missing text' })
-  if (keys.length === 0) return res.status(500).json({ error: "No API keys configured" });
-
-  // THE KEY JUMPER: Uses both scene number and retry attempt to find a working key
-  const activeKeyIndex = (Number(sceneIndex) + Number(attempt)) % keys.length;
-  const activeKey = keys[activeKeyIndex];
-
-  const hash = createHash('sha256').update(text + voiceName).digest('hex')
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const cached = await getCachedNarration(hash)
-    if (cached) return res.json({ audioBase64: cached, cached: true })
-  } catch (e) {
-    console.error('Redis error:', e)
-  }
+    const { text, voiceName = 'Kore' } = req.body;
+    if (!text) return res.status(400).json({ error: 'Missing text' });
 
-  try {
-    const model = 'gemini-2.5-flash-preview-tts'
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`
+    // 1. Cache Check
+    const hash = createHash('sha256').update(`${text}|${voiceName}`).digest('hex');
+    const cachedAudio = await getCachedNarration(hash);
+    if (cachedAudio) return res.json({ audioBase64: cachedAudio, cached: true });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: "Maintain a consistent volume and professional tone." }]
-        },
-        contents: [{ role: 'user', parts: [{ text }] }],
-        generationConfig: {
-          responseModalities: ['AUDIO'], 
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName } }
-          }
-        }
-      })
-    })
+    // 2. Load API Keys
+    const rawKeys = process.env.GEMINI_KEY_A || process.env.GEMINI_API_KEY || '';
+    const keys = rawKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    if (keys.length === 0) throw new Error('No API keys found in GEMINI_KEY_A');
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      // Return the actual Google error message instead of a generic 500
-      return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
+    // 3. Global Rotation Logic
+    let nextIndex = 0;
+    try {
+        const globalCounter = await redis.incr('global_key_rotation_counter');
+        nextIndex = globalCounter % keys.length;
+    } catch (e) {
+        nextIndex = Math.floor(Math.random() * keys.length);
     }
 
-    const audioBase64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
-    if (!audioBase64) throw new Error('No audio data found in response')
+    const voiceId = VOICE_MAP[voiceName] || 'Kore';
+    let lastError = null;
 
-    await setCachedNarration(hash, audioBase64)
-    return res.status(200).json({ audioBase64, cached: false })
+    // 4. Try the rotation
+    for (let i = 0; i < keys.length; i++) {
+      const currentIndex = (nextIndex + i) % keys.length;
+      const activeKey = keys[currentIndex];
+      
+      console.log(`>>> ROTATION: Using Key #${currentIndex + 1} (Starts with: ${activeKey.substring(0, 8)})`);
+      
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${activeKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: text }] }],
+              generationConfig: {
+                response_modalities: ["AUDIO"],
+                speech_config: {
+                  voice_config: {
+                    // FIX: Ensure prebuilt_voice_config is present and contains voice_name
+                    prebuilt_voice_config: {
+                      voice_name: voiceId
+                    }
+                  }
+                }
+              }
+            })
+          }
+        );
 
-  } catch (e: any) {
-    console.error('TTS execution error:', e.message)
-    res.status(500).json({ error: e.message || 'TTS generation failed' })
+        const data = await response.json();
+
+        if (response.status === 429) {
+          console.warn(`Key ${currentIndex + 1} limited. Trying next key...`);
+          continue;
+        }
+
+        if (!response.ok) {
+            // This captures the exact error message from Google (like the one in your screenshot)
+            throw new Error(data.error?.message || `API Error ${response.status}`);
+        }
+
+        const audioBase64 = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData?.data;
+        if (!audioBase64) throw new Error('No audio returned');
+
+        await setCachedNarration(hash, audioBase64);
+        return res.json({
+          audioBase64,
+          cached: false,
+          keyUsed: currentIndex + 1, 
+          model: 'Gemini 2.5 Flash TTS'
+        });
+
+      } catch (e: any) {
+        lastError = e;
+        console.error(`Attempt with key ${currentIndex + 1} failed:`, e.message);
+      }
+    }
+
+    throw new Error(`All keys failed. Last error: ${lastError?.message}`);
+
+  } catch (error: any) {
+    console.error('Narrate Error:', error.message);
+    return res.status(500).json({ error: error.message });
   }
 }

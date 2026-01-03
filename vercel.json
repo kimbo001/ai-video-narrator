@@ -1,14 +1,17 @@
 {
+  "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/(.*).(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)",
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)",
       "headers": [
-        { 
-          "key": "Cache-Control", 
-          "value": "public, max-age=31536000, immutable" 
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
         }
       ]
     }
