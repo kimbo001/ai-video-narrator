@@ -6,25 +6,46 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // ADD THIS LINE BACK:
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id             String   @id
-  email          String   @unique
-  plan           Plan     @default(FREE)
-  subscriptionId String?
-  generations    Generation[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String       @id
+  email           String       @unique
+  plan            Plan         @default(FREE)
+  credits         Int          @default(5000)
+  lastCreditReset DateTime     @default(now())
+  subscriptionId  String?
+  
+  // Relations
+  generations     Generation[]
+  projects        Project[]    // Link to the user's saved scripts/recipes
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }
 
 model Generation {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  characterCount Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model Project {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+  title     String   @default("Untitled Video")
+  script    String   @db.Text
+  
+  // 'data' stores the JSON array of scenes (mediaUrl, narration, audioData, etc.)
+  // This is the "Recipe" that rebuilds the video without storing a heavy file.
+  data      Json     
+  
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Plan {

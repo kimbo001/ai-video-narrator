@@ -125,62 +125,85 @@ useEffect(() => {
     }
   };
 
-  // --- UI DATA (Restored Exact Look) ---
+// --- UI DATA (Updated for Character Credits) ---
   const tiers = [
     {
       name: 'Free',
-      dbName: 'FREE', // Matches Prisma Enum
+      dbName: 'FREE',
       price: '$0',
-      period: '/month',
+      period: '/one-time',
       description: 'Perfect for getting started',
-      autoDaily: 3,
-      manualDaily: 0.5,
-      features: ['3 AI-generated videos daily', '1 manual video every 48 hours', '720p export quality', 'Standard AI voices', 'Basic stock footage'],
+      characterLimit: '5,000', // Replaces autoDaily
+      videoEst: '~5 mins',    // Replaces manualDaily
+      features: [
+        '5,000 characters total', 
+        '720p export quality', 
+        'Standard AI voices', 
+        'Basic stock footage',
+        'No credit card required'
+      ],
       cta: 'Start Creating Free',
       popular: false,
       isFree: true,
     },
     {
       name: 'New Tuber',
-      dbName: 'NEW_TUBER', // Matches Prisma Enum
+      dbName: 'NEW_TUBER',
       price: '$9',
       period: '/month',
       description: 'For serious creators',
-      autoDaily: 5,
-      manualDaily: 5,
-      features: ['5 AI-generated videos daily', '5 manual videos daily', '1080p export quality', 'Premium AI voices', 'Commercial usage rights', 'Priority processing'],
+      characterLimit: '50,000',
+      videoEst: '~45 mins',
+      features: [
+        '50,000 characters / month', 
+        '1080p export quality', 
+        'Premium HD AI voices', 
+        'Commercial usage rights', 
+        'Priority processing'
+      ],
       cta: 'Start New Tuber',
       popular: true,
       isFree: false,
     },
     {
       name: 'Creator',
-      dbName: 'CREATOR', // Matches Prisma Enum
+      dbName: 'CREATOR',
       price: '$24',
       period: '/month',
       description: 'For growing channels',
-      autoDaily: 25,
-      manualDaily: 25,
-      features: ['25 AI-generated videos daily', '25 manual videos daily', '4K export quality', 'All AI voices + custom', 'Advanced editing tools', 'Analytics dashboard'],
+      characterLimit: '150,000',
+      videoEst: '~2.5 hours',
+      features: [
+        '150,000 characters / month', 
+        '4K export quality', 
+        'All HD AI voices', 
+        'Advanced editing tools', 
+        'Analytics dashboard'
+      ],
       cta: 'Start Creator',
       popular: false,
       isFree: false,
     },
     {
       name: 'Pro',
-      dbName: 'PRO', // Matches Prisma Enum
+      dbName: 'PRO',
       price: '$48',
       period: '/month',
       description: 'For professionals',
-      autoDaily: 'Unlimited',
-      manualDaily: 'Unlimited',
-      features: ['Unlimited AI-generated videos', 'Unlimited manual videos', '4K+ export quality', 'API access', 'White-label options', 'Dedicated support'],
+      characterLimit: '500,000',
+      videoEst: '~8+ hours',
+      features: [
+        '500,000 characters / month', 
+        '4K+ export quality', 
+        'API access', 
+        'White-label options', 
+        'Dedicated support'
+      ],
       cta: 'Start Pro',
       popular: false,
       isFree: false,
     },
   ];
-
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <button 
@@ -230,16 +253,16 @@ useEffect(() => {
                 <span className="text-zinc-500 text-sm"> {tier.period}</span>
               </div>
 
-              <div className="mb-6 bg-zinc-900/50 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-zinc-400 text-sm">AI Videos</span>
-                  <span className="text-white font-bold">{tier.autoDaily}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-400 text-sm">Manual Videos</span>
-                  <span className="text-white font-bold">{tier.manualDaily}</span>
-                </div>
-              </div>
+              <div className="mb-6 bg-zinc-900/50 rounded-lg p-4 border border-zinc-800/50">
+  <div className="flex justify-between items-center mb-2">
+    <span className="text-zinc-400 text-xs uppercase tracking-widest font-bold">Credits</span>
+    <span className="text-white font-bold">{tier.characterLimit} chars</span>
+  </div>
+  <div className="flex justify-between items-center">
+    <span className="text-zinc-400 text-xs uppercase tracking-widest font-bold">Est. Content</span>
+    <span className="text-cyan-400 font-bold">{tier.videoEst}</span>
+  </div>
+</div>
 
               <ul className="flex-1 space-y-3 mb-6">
                 {tier.features.map((feature, idx) => (

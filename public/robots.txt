@@ -4,17 +4,23 @@ Allow: /
 # Sitemap location
 Sitemap: https://aivideonarrator.com/sitemap.xml
 
-# Block admin/cpanel access (security)
+# Block bots from trying to crawl your private app pages
+# (They can't get past the Clerk login anyway)
+Disallow: /generator
+Disallow: /studio
+
+# Block traditional admin paths
 Disallow: /admin/
 Disallow: /cpanel/
 Disallow: /private/
 
-# Block sensitive files
+# Block source/config files
 Disallow: /package.json
 Disallow: /package-lock.json
 Disallow: /node_modules/
+Disallow: /.env
 
-# Allow specific file types
+# Allow specific file types for SEO
 Allow: *.js
 Allow: *.css
 Allow: *.png
@@ -23,6 +29,7 @@ Allow: *.jpeg
 Allow: *.gif
 Allow: *.svg
 Allow: *.webp
+Allow: *.webm  # <--- Added for your walkthrough video
 
-# Crawl delay to be respectful
+# Crawl delay to be respectful (Bing/Yahoo respect this)
 Crawl-delay: 1
