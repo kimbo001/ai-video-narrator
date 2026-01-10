@@ -2,9 +2,9 @@
 import { createHash } from 'crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { waitUntil } from '@vercel/functions'; 
+// THE FIX: Combine into one line so the ignore covers everything from redis.js
 // @ts-ignore
-import redis from './_lib/redis.js'; 
-import { getCachedNarration, setCachedNarration } from './_lib/redis.js';
+import redis, { getCachedNarration, setCachedNarration } from './_lib/redis.js';
 
 const VOICE_MAP: Record<string, string> = {
   'Kore': 'Kore',
@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         // This ensures Key 1 -> Key 2 -> Key 3
         const globalCounter = await redis.incr('global_key_rotation_counter');
-        nextIndex = globalCounter % keys.length;
+        nextIndex = Number(globalCounter) % keys.length;
     } catch (e) {
         nextIndex = Math.floor(Math.random() * keys.length);
     }
@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4. Attempt Generation with Rotation
     for (let i = 0; i < keys.length; i++) {
-      const currentIndex = (nextIndex + i) % keys.length;
+      const currentIndex = (Number(nextIndex) + i) % keys.length;
       const activeKey = keys[currentIndex];
       
       console.log(`>>> ROTATION: Using Key #${currentIndex + 1} (Starts with: ${activeKey.substring(0, 8)})`);

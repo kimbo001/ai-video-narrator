@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom'; // Added useNavigate
 import { useSafeUser } from '../lib/useSafeUser';
 import { AppConfig, VideoOrientation, Scene, GenerationStatus } from '../types';
 import VideoPlayer from './VideoPlayer';
@@ -7,7 +7,7 @@ import { analyzeScript, generateNarration } from '../services/gemini';
 import { fetchPixabayMedia, fetchPixabayAudio } from '../services/pixabay';
 import { fetchPexelsMedia } from '../services/pexels';
 import { fetchUnsplashMedia } from '../services/unsplash';
-import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Trash2, FileVideo, ImageIcon, Plus, Music, Volume2, Focus, Ban, Clock } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Upload, ArrowLeft, Trash2, FileVideo, ImageIcon, Plus, Music, Volume2, Focus, Ban, Clock, Zap } from 'lucide-react'; // Added Zap
 import SettingsPanel from './SettingsPanel';
 import { SignIn } from '@clerk/clerk-react';
 
@@ -30,6 +30,7 @@ interface UploadedFile {
 const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   // --- 1. HOOKS & STATE ---
   const location = useLocation();
+  const navigate = useNavigate(); // Added for navigation
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [config, setConfig] = useState<AppConfig>({
     pixabayApiKey: DEFAULT_PIXABAY_KEY,
@@ -48,6 +49,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const [totalLimit, setTotalLimit] = useState(5000);
   const [userPlan, setUserPlan] = useState('FREE');
   const [savedProjects, setSavedProjects] = useState<any[]>([]);
+  const [showPowerUp, setShowPowerUp] = useState(false); // NEW: State for Power Pass Modal
   
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(null);
   const [musicFile, setMusicFile] = useState<File | null>(null);
@@ -70,7 +72,7 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
           });
           if (response.ok) {
             await fetchUsage();
-            await fetchProjects(); // Get projects on login
+            await fetchProjects(); 
           }
         } catch (err) { console.error("User sync error:", err); }
       }
@@ -123,10 +125,32 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
   const checkLimits = async () => {
     if (!userId) return true;
     if (script.length > creditsRemaining) {
-      alert(`Insufficient credits! This script is ${script.length.toLocaleString()} characters, but you only have ${creditsRemaining.toLocaleString()} left. Please upgrade your plan.`);
+      setShowPowerUp(true); // NEW: Show the modal instead of a simple alert
       return false;
     }
     return true;
+  };
+
+  const handleCheckout = async (tierName: string) => {
+    // Replace this ID with your actual Lemon Squeezy Power Pass Variant ID
+    const POWER_PASS_ID = '1204425'; 
+    const variantId = tierName === 'Power Pass' ? POWER_PASS_ID : '';
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variantId,
+          userId: user?.id,
+          userEmail: user?.primaryEmailAddress?.emailAddress
+        })
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      alert("Checkout failed. Please try again.");
+    }
   };
 
   const logVideoToDb = async () => {
@@ -151,6 +175,10 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
       if (url) return { url, source: provider };
     }
     return { url: null, source: 'none' };
+  };
+
+  const handleManageBilling = () => {
+    window.open("https://aivideonarrator.lemonsqueezy.com/billing", "_blank");
   };
 
   // --- 4. GENERATION LOGIC ---
@@ -214,22 +242,13 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
         setScenes(prev => [...prev, finishedScene]);
 
         if (i < rawScenesData.length - 1) {
-          const funLines = [
-            "AI is clearing its throat...",
-            "Teaching the narrator how to emphasize...",
-            "Consulting the digital gods for the perfect tone...",
-            "AI is doing some deep thinking...",
-            "Polishing the narration...",
-            "Whispering the next part..."
-          ];
-          setStatus({ step: 'generating_audio', message: funLines[i % funLines.length] });
+          setStatus({ step: 'generating_audio', message: "Polishing the next scene..." });
           await new Promise(r => setTimeout(r, 15000));
         }
       }
 
       await logVideoToDb();
 
-      // SAVE COMPLETED RECIPE TO CLOUD
       try {
         await fetch('/api/projects/save', {
           method: 'POST',
@@ -242,9 +261,8 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
             title: script.substring(0, 30).trim() + "..."
           })
         });
-        console.log("✅ Cloud backup successful.");
-        await fetchProjects(); // Refresh the list after saving
-      } catch (err) { console.error("❌ Cloud backup failed."); }
+        await fetchProjects();
+      } catch (err) { console.error("Cloud backup failed."); }
 
       setStatus({ step: 'ready' });
     } catch (error: any) { setStatus({ step: 'error', message: error.message }); }
@@ -283,12 +301,40 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
 
   // --- 5. RENDER UI ---
   return (
-    <div className="flex-1 max-w-[1800px] mx-auto p-4 lg:p-6 w-full h-full flex flex-col font-sans">
+    <div className="flex-1 max-w-[1800px] mx-auto p-4 lg:p-6 w-full h-full flex flex-col font-sans relative">
+      
+      {/* POWER PASS MODAL OVERLAY */}
+      {showPowerUp && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="bg-[#11141b] border border-zinc-800 rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300 text-center">
+            <div className="w-16 h-16 bg-cyan-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Zap className="w-8 h-8 text-cyan-400 fill-cyan-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2 italic">Low on Fuel?</h2>
+            <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
+              Your script is {script.length.toLocaleString()} chars, but you only have {creditsRemaining.toLocaleString()} left.
+            </p>
+            <div className="space-y-3">
+              <button onClick={() => handleCheckout('Power Pass')} className="w-full p-4 bg-zinc-900 border border-zinc-700 hover:border-cyan-500/50 rounded-2xl text-left transition-all group">
+                <div className="flex justify-between items-center mb-1"><span className="text-white font-bold">24-Hour Power Pass</span><span className="text-cyan-400 font-black">$5</span></div>
+                <p className="text-[9px] text-zinc-500 uppercase tracking-widest font-black">20k Characters • One-time</p>
+              </button>
+              <button onClick={() => navigate('/pricing')} className="w-full p-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl text-left shadow-lg shadow-cyan-500/20 hover:scale-[1.02] transition-all">
+                <div className="flex justify-between items-center mb-1"><span className="text-white font-black">Creator Plan</span><span className="text-white font-black">$24</span></div>
+                <p className="text-[9px] text-white/70 uppercase tracking-widest font-black">150k Chars / Month • Best Value</p>
+              </button>
+            </div>
+            <button onClick={() => setShowPowerUp(false)} className="mt-6 text-xs text-zinc-600 hover:text-zinc-400 transition-colors uppercase font-black tracking-[0.2em]">Maybe Later</button>
+          </div>
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium"><ArrowLeft className="w-4 h-4" /> Back to Home</button>
-        <div className="flex gap-2 font-sans">
-            <div className="text-[10px] font-bold text-zinc-500 bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800 uppercase tracking-widest">PLAN: <span className="text-cyan-400 font-sans">{userPlan}</span></div>
-            <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800 font-bold tracking-tight">Characters Left: <span className={creditsRemaining <= 500 ? 'text-red-500' : 'text-cyan-500'}>{creditsRemaining.toLocaleString()}</span>/{totalLimit.toLocaleString()}</div>
+        <div className="flex items-center gap-3 font-sans">
+          <button onClick={handleManageBilling} className="text-[10px] text-zinc-500 hover:text-cyan-400 transition-colors uppercase tracking-widest font-bold border-b border-zinc-800 hover:border-cyan-400/50 pb-0.5">Manage Billing</button>
+          <div className="text-[10px] font-bold text-zinc-500 bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800 uppercase tracking-widest">PLAN: <span className="text-cyan-400 font-sans">{userPlan}</span></div>
+          <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800 font-bold tracking-tight">Characters Left: <span className={creditsRemaining <= 500 ? 'text-red-500' : 'text-cyan-500'}>{creditsRemaining.toLocaleString()}</span>/{totalLimit.toLocaleString()}</div>
         </div>
       </div>
 
@@ -300,48 +346,25 @@ const Generator: React.FC<GeneratorProps> = ({ onBack }) => {
               <span className="text-xs text-zinc-500 font-mono font-sans">{script.length} chars</span>
             </div>
             
-            <textarea 
-               value={script} 
-               onChange={(e) => setScript(e.target.value)} 
-               className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 outline-none resize-none custom-scrollbar leading-relaxed font-sans" 
-               placeholder="Paste your script here... Use --- for manual splits." 
-            />
+            <textarea value={script} onChange={(e) => setScript(e.target.value)} className="flex-1 w-full bg-[#0b0e14] border border-zinc-800 rounded-xl p-4 text-zinc-300 text-sm focus:ring-1 focus:ring-cyan-500 outline-none resize-none custom-scrollbar leading-relaxed font-sans" placeholder="Paste your script here... Use --- for manual splits." />
 
             <div className="mt-3 flex justify-between items-center shrink-0 border-t border-zinc-800 pt-3">
-              <span className={`text-[10px] font-bold tracking-widest uppercase ${script.length > creditsRemaining ? 'text-red-500 animate-pulse' : 'text-zinc-500'}`}>
-                {script.length > creditsRemaining ? '⚠️ Script Too Long' : '✓ Length OK'}
-              </span>
-              <span className="text-[10px] text-zinc-500 font-mono bg-black/40 px-2 py-1 rounded border border-zinc-800">
-                Cost: {script.length.toLocaleString()} credits
-              </span>
+              <span className={`text-[10px] font-bold tracking-widest uppercase ${script.length > creditsRemaining ? 'text-red-500 animate-pulse' : 'text-zinc-500'}`}>{script.length > creditsRemaining ? '⚠️ Script Too Long' : '✓ Length OK'}</span>
+              <span className="text-[10px] text-zinc-500 font-mono bg-black/40 px-2 py-1 rounded border border-zinc-800">Cost: {script.length.toLocaleString()} credits</span>
             </div>
 
-            {/* RECENT PROJECTS LIST */}
             <div className="mt-6 border-t border-zinc-800 pt-4 overflow-hidden flex flex-col min-h-0 shrink-0">
-              <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Clock className="w-3 h-3" /> Recent Projects
-              </h3>
+              <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Clock className="w-3 h-3" /> Recent Projects</h3>
               <div className="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-2 pb-2">
-                {savedProjects.length === 0 && (
-                  <p className="text-[10px] text-zinc-600 italic">No saved projects yet.</p>
-                )}
+                {savedProjects.length === 0 && <p className="text-[10px] text-zinc-600 italic">No saved projects yet.</p>}
                 {savedProjects.map((proj) => (
-                  <button
-                    key={proj.id}
-                    onClick={() => loadProject(proj)}
-                    className="w-full text-left p-2 rounded-lg bg-[#0b0e14] border border-zinc-800/50 hover:border-cyan-500/50 transition-all group"
-                  >
-                    <p className="text-[11px] text-zinc-300 font-medium truncate group-hover:text-cyan-400">
-                      {proj.title}
-                    </p>
-                    <p className="text-[9px] text-zinc-600 font-mono mt-0.5">
-                      {new Date(proj.createdAt).toLocaleDateString()}
-                    </p>
+                  <button key={proj.id} onClick={() => loadProject(proj)} className="w-full text-left p-2 rounded-lg bg-[#0b0e14] border border-zinc-800/50 hover:border-cyan-500/50 transition-all group">
+                    <p className="text-[11px] text-zinc-300 font-medium truncate group-hover:text-cyan-400">{proj.title}</p>
+                    <p className="text-[9px] text-zinc-600 font-mono mt-0.5">{new Date(proj.createdAt).toLocaleDateString()}</p>
                   </button>
                 ))}
               </div>
             </div>
-
           </div>
         </div>
 

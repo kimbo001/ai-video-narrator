@@ -50,7 +50,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 properties: {
                   narration: { type: SchemaType.STRING },
                   visual_search_term: { type: SchemaType.STRING },
-                  media_type: { type: SchemaType.STRING, enum: ['image', 'video'] },
+                  media_type: { 
+  type: SchemaType.STRING, 
+  enum: ['image', 'video'],
+  // @ts-ignore - This tells TS to stop complaining about the 'format' field
+  format: "enum" 
+},
                 },
                 required: ['narration', 'visual_search_term', 'media_type'],
               },
